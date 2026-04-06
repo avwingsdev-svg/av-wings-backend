@@ -1,0 +1,35 @@
+import { Module } from '@nestjs/common';
+import { MulterModule } from '@nestjs/platform-express';
+import * as multer from 'multer';
+import { ConfigModule } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
+import { ThrottlerModule } from '@nestjs/throttler';
+
+@Module({
+  imports: [
+    MulterModule.register({
+      storage: multer.memoryStorage(), // use in-memory buffer
+    }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    MongooseModule.forRoot(process.env.MONGO_URI as string),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          name: 'default',
+          ttl: 60,
+          limit: 100,
+        },
+        { 
+          //auth
+          name: 'auth',
+          ttl: 10, 
+          limit: 5 
+        },
+      ],
+    }),
+
+  ]
+})
+export class AppModule {}
