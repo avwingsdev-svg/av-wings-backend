@@ -4,6 +4,7 @@ import * as multer from 'multer';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -21,15 +22,15 @@ import { ThrottlerModule } from '@nestjs/throttler';
           ttl: 60,
           limit: 100,
         },
-        { 
+        {
           //auth
           name: 'auth',
-          ttl: 10, 
-          limit: 5 
+          ttl: 10,
+          limit: 5,
         },
       ],
     }),
-
-  ]
+    AuthModule,
+  ],
 })
 export class AppModule {}
