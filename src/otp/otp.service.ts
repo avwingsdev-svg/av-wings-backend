@@ -6,14 +6,20 @@ import { Otp } from '../schema/Otp.schema';
 import { generateOtp } from '../common/utils/otp.util';
 
 const OTP_SALT_ROUNDS = 10;
+/** Signup / password-setup codes remain valid for 10 minutes. */
 const OTP_TTL_MS = 10 * 60 * 1000;
 
+/**
+ * Stores only bcrypt hashes of 4-digit codes; issuing a new code invalidates prior unused rows
+ * for the same email so replay of an old OTP fails.
+ */
 @Injectable()
 export class OtpService {
   constructor(@InjectModel(Otp.name) private readonly otpModel: Model<Otp>) {}
 
   /**
-   * Creates a new OTP for the given email and purpose, invalidates previous active OTPs, returns the plain code (for mailing only).
+   * Creates a new OTP for the given email, marks any previous unused OTPs as consumed, and
+   * returns the plaintext code once for sending by email (never stored in plain form).
    */
   async issueOtp(email: string ): Promise<string> {
     const normalized = email.trim().toLowerCase();
@@ -36,6 +42,10 @@ export class OtpService {
     return plain;
   }
 
+  /**
+   * Accepts exactly four digits, compares against the newest non-expired unconsumed record,
+   * then marks that record consumed so the same code cannot succeed twice.
+   */
   async verifyOtp(
     email: string,
     plainCode: string,

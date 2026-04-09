@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import type { SignOptions } from 'jsonwebtoken';
 import { PassportModule } from '@nestjs/passport';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from '../schema/User.schema';
@@ -8,8 +9,8 @@ import { MailModule } from '../mail/mail.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { getJwtAccessExpiresSeconds } from '../common/utils/jwt-expires.util';
-
+import { OnboardingController } from '../onboarding/onboarding.controller';
+import { OnboardingService } from '../onboarding/onboarding.service';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
@@ -20,13 +21,13 @@ import { getJwtAccessExpiresSeconds } from '../common/utils/jwt-expires.util';
       useFactory: () => ({
         secret: process.env.JWT_SECRET ?? 'development-only-set-JWT_SECRET',
         signOptions: {
-          expiresIn: getJwtAccessExpiresSeconds(),
-        },
+          expiresIn: process.env.JWT_ACCESS_EXPIRES ?? '15m',
+        } as SignOptions,
       }),
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  controllers: [AuthController, OnboardingController],
+  providers: [AuthService, JwtStrategy, OnboardingService],
   exports: [AuthService],
 })
 export class AuthModule {}

@@ -5,9 +5,14 @@ import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { BookingModule } from './booking/booking.module';
+import { MarketModule } from './market/market.module';
+import { ServicesModule } from './services/services.module';
 
 @Module({
   imports: [
+    CloudinaryModule,
     MulterModule.register({
       storage: multer.memoryStorage(), // use in-memory buffer
     }),
@@ -31,6 +36,9 @@ import { AuthModule } from './auth/auth.module';
       ],
     }),
     AuthModule,
+    BookingModule,
+    MarketModule,
+    ServicesModule,
   ],
 })
 export class AppModule {}

@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
@@ -7,14 +7,30 @@ import { EmailBodyDto } from './dto/email-body.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChooseAccountTypeDto } from './dto/choose-account-type.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 
+/** HTTP surface for registration, sessions, password reset, and static onboarding account-type options. */
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
 @Throttle({ default: { limit: 60, ttl: 60000 } })
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Get('account-types')
+  getAccountTypes() {
+    return this.authService.getAccountTypes();
+  }
+
+  @Patch('onboarding/account-type')
+  @UseGuards(JwtAuthGuard)
+  chooseAccountType(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: ChooseAccountTypeDto,
+  ) {
+    return this.authService.chooseAccountType(userId, dto);
+  }
 
   @Post('signup')
   signup(@Body() dto: SignupDto) {

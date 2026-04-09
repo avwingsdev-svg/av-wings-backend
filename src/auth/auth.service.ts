@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -19,13 +20,18 @@ import { EmailBodyDto } from './dto/email-body.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { getJwtAccessExpiresSeconds } from '../common/utils/jwt-expires.util';
+import { ChooseAccountTypeDto } from './dto/choose-account-type.dto';
 import { createPasswordResetSecret, decodePasswordResetToken, encodePasswordResetToken, getPasswordResetTtlMs } from 'src/common/utils/password-reset-token.util';
+import { ACCOUNT_TYPE_OPTIONS } from '../account-types/account-type-options';
 
 
+/** Opaque refresh token length (raw bytes before base64url encoding). */
 const REFRESH_TOKEN_BYTES = 48;
 
-
+/**
+ * Authentication and account lifecycle: registration with email OTP, sessions (JWT + hashed
+ * refresh token), password reset via signed link, and onboarding-related account type metadata.
+ */
 @Injectable()
 export class AuthService {
   constructor(
@@ -35,6 +41,10 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
+  /**
+   * Registers a new user with a hashed password, then emails a 4-digit OTP so the address
+   * can be verified before the account is considered fully trusted for login.
+   */
   async signup(dto: SignupDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
     const existing = await this.userModel.findOne({ email }).exec();
@@ -59,6 +69,10 @@ export class AuthService {
     return { message: 'Verification code sent to your email.' };
   }
 
+  /**
+   * Confirms ownership of the email by validating the latest unused OTP, then flips
+   * {@link User.isEmailVerified} so login is allowed.
+   */
   async verifySignup(dto: SignupVerifyDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
@@ -76,6 +90,10 @@ export class AuthService {
     return { message: 'Email verified. You can set your password when ready.' };
   }
 
+  /**
+   * Re-issues a signup OTP only when the account exists and is still unverified; response is
+   * always generic so callers cannot probe which emails are registered.
+   */
   async resendSignupOtp(dto: EmailBodyDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
@@ -92,11 +110,14 @@ export class AuthService {
     return generic;
   }
 
-
+  /**
+   * Issues tokens only when the password matches, email is verified, and a password has been
+   * set (accounts mid-onboarding without a password are rejected here).
+   */
   async login(dto: LoginDto): Promise<{
     accessToken: string;
     refreshToken: string;
-    expiresIn: number;
+    expiresIn: string;
   }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
@@ -116,10 +137,14 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
+  /**
+   * Rotates session by verifying the presented refresh token against the bcrypt hash stored
+   * on the user; email in the body ties the opaque token to the correct account.
+   */
   async refresh(dto: RefreshDto): Promise<{
     accessToken: string;
     refreshToken: string;
-    expiresIn: number;
+    expiresIn: string;
   }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
@@ -136,6 +161,7 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
+  /** Ends the session server-side by invalidating the stored refresh token hash. */
   async logout(userId: string): Promise<{ message: string }> {
     await this.userModel
       .findByIdAndUpdate(userId, { $unset: { refreshToken: 1 } })
@@ -143,6 +169,36 @@ export class AuthService {
     return { message: 'Logged out.' };
   }
 
+  /** Static catalog for onboarding UI (labels and subtext per {@link UserAccountType}). */
+  getAccountTypes() {
+    return { accountTypes: ACCOUNT_TYPE_OPTIONS };
+  }
+
+  /**
+   * Persists the user’s marketplace role after signup; drives which onboarding profile and
+   * document endpoints apply.
+   */
+  async chooseAccountType(
+    userId: string,
+    dto: ChooseAccountTypeDto,
+  ): Promise<{ message: string; accountType: UserAccountType }> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+    user.accountType = dto.accountType;
+    await user.save();
+    return {
+      message: 'Account type saved.',
+      accountType: user.accountType,
+    };
+  }
+
+  /**
+   * If the user can log in with a password, stores a short-lived reset secret (hashed) and
+   * emails a link built from {@code PASSWORD_RESET_REDIRECT_URL} plus a token. Same generic
+   * message is returned when no reset is sent to avoid email enumeration.
+   */
   async forgotPassword(dto: EmailBodyDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
@@ -150,6 +206,7 @@ export class AuthService {
       message: 'If an account exists with this email, a message was sent.',
     };
 
+    // No password yet → nothing to reset; still respond generically.
     if (!user?.isPasswordSet) {
       return generic;
     }
@@ -182,6 +239,10 @@ export class AuthService {
     return generic;
   }
 
+  /**
+   * Validates the token’s user id, expiry, and secret against the stored hash, then sets a
+   * new password and clears reset + refresh state so old sessions cannot be refreshed.
+   */
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
     const parsed = decodePasswordResetToken(dto.token);
     if (!parsed) {
@@ -219,10 +280,14 @@ export class AuthService {
     return { message: 'Password updated. Please sign in again.' };
   }
 
+  /**
+   * Signs a short-lived JWT and persists a new bcrypt-hashed refresh token, returning the
+   * plaintext refresh once (client must store it; DB only keeps the hash).
+   */
   private async issueTokens(user: User): Promise<{
     accessToken: string;
     refreshToken: string;
-    expiresIn: number;
+    expiresIn: string;
   }> {
     const payload = { sub: user._id.toString(), email: user.email };
     const accessToken = await this.jwtService.signAsync(payload);
@@ -231,12 +296,12 @@ export class AuthService {
     user.refreshToken = refreshHash;
     await user.save();
 
-    const expiresIn = getJwtAccessExpiresSeconds();
+    const expiresIn = process.env.JWT_ACCESS_EXPIRES ?? '15m';
 
     return {
       accessToken,
       refreshToken: refreshPlain,
-      expiresIn, 
+      expiresIn,
     };
   }
 }

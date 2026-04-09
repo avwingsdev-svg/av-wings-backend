@@ -7,6 +7,7 @@ export type JwtValidatedUser = {
   email: string;
 };
 
+/** Validates Bearer access tokens and attaches `user` on the request for guards and decorators. */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
@@ -17,6 +18,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  /** Maps JWT `sub` + `email` into the object read by the CurrentUser decorator. */
   validate(payload: { sub: string; email: string }): JwtValidatedUser {
     return { userId: payload.sub, email: payload.email };
   }

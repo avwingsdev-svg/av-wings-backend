@@ -9,24 +9,29 @@ import { passwordResetLinkEmailContent } from './templates/password-reset-link.t
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
 
+/** Sends transactional email via Resend; fails closed when API keys or sender are missing. */
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
 
+  /** Delivers the signup verification code using the shared HTML template and app branding. */
   async sendSignupOtp(to: string, otp: string): Promise<void> {
     const env = loadEmailProviderEnv();
     const { subject, html } = signupOtpEmailContent(env.appName, otp);
     await this.sendResend(to, subject, html, env);
   }
 
-
-
+  /**
+   * Emails the deep link the client app will open; the token itself is opaque to Resend and
+   * is consumed server-side when the user sets a new password.
+   */
   async sendPasswordResetLink(to: string, resetLink: string): Promise<void> {
     const env = loadEmailProviderEnv();
     const { subject, html } = passwordResetLinkEmailContent(env.appName, resetLink);
     await this.sendResend(to, subject, html, env);
   }
 
+  /** Shared HTTP call to Resend with mandatory configuration and structured error logging. */
   private async sendResend(
     to: string,
     subject: string,
