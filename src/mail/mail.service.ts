@@ -119,7 +119,6 @@ export class MailService {
       },
     });
 
-    console.log('transporter config', transporter.options); 
 
     try {
       await transporter.sendMail({

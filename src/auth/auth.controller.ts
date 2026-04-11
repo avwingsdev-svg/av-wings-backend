@@ -84,4 +84,10 @@ export class AuthController {
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
   }
+
+  @Get('current-user')
+  @UseGuards(JwtAuthGuard)
+  getCurrentUser(@CurrentUser('userId') userId: string) {
+    return this.authService.getCurrentUser(userId);
+  }
 }

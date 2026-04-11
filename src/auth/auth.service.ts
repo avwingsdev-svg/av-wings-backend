@@ -30,13 +30,10 @@ import {
 import { ACCOUNT_TYPE_OPTIONS } from '../account-types/account-type-options';
 
 
-/** Opaque refresh token length (raw bytes before base64url encoding). */
+
 const REFRESH_TOKEN_BYTES = 48;
 
-/**
- * Authentication and account lifecycle: registration with email OTP, sessions (JWT + hashed
- * refresh token), password reset via signed link, and onboarding-related account type metadata.
- */
+/// Core authentication logic for registration, sessions, password reset, and onboarding account types.
 @Injectable()
 export class AuthService {
   constructor(
@@ -46,10 +43,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  /**
-   * Registers a new user with a hashed password, then emails a 4-digit OTP so the address
-   * can be verified before the account is considered fully trusted for login.
-   */
+
+  // Registers a new user by creating the account with unverified email, issuing an OTP, and emailing that OTP for verification before login is allowed.
   async signup(dto: SignupDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
     const existing = await this.userModel.findOne({ email }).exec();
@@ -74,10 +69,7 @@ export class AuthService {
     return { message: 'Verification code sent to your email.' };
   }
 
-  /**
-   * Confirms ownership of the email by validating the latest unused OTP, then flips
-   * {@link User.isEmailVerified} so login is allowed.
-   */
+// Verifies the OTP and marks the email as verified so the user can log in; OTP must be valid and unused.
   async verifySignup(dto: SignupVerifyDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
@@ -92,33 +84,30 @@ export class AuthService {
     user.isEmailVerified = true;
     await user.save();
 
-    return { message: 'Email verified. You can set your password when ready.' };
+    return { message: 'Email verified' };
   }
 
-  /**
-   * Re-issues a signup OTP only when the account exists and is still unverified; response is
-   * always generic so callers cannot probe which emails are registered.
-   */
+ // Resends a new OTP for email verification if the account exists and is not yet verified; always returns the same generic message to avoid enumeration.
   async resendSignupOtp(dto: EmailBodyDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
+    console.log("user data", user);
     const generic = {
-      message: 'If an account exists and needs verification, a code was sent.',
+      message: 'If an unverified account exists with this email, a new verification code was sent.',
     };
 
     if (!user || user.isEmailVerified) {
+      console.log("print generic", generic);
       return generic;
     }
 
-    const otp = await this.otpService.issueOtp(email);
-    await this.mailService.sendSignupOtp(email, otp);
+
+    const otp = await this.otpService.issueOtp(user.email);
+    await this.mailService.sendSignupOtp(user.email, otp);
     return generic;
   }
 
-  /**
-   * Issues tokens only when the password matches, email is verified, and a password has been
-   * set (accounts mid-onboarding without a password are rejected here).
-   */
+// Logins by verifying email and password, then issues JWT access and opaque refresh tokens (the latter stored hashed in the DB for later verification).
   async login(dto: LoginDto): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -142,10 +131,7 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
-  /**
-   * Rotates session by verifying the presented refresh token against the bcrypt hash stored
-   * on the user; email in the body ties the opaque token to the correct account.
-   */
+// Rotates session by verifying the presented refresh token against the bcrypt hash stored on the user; email in the body ties the opaque token to the correct account.
   async refresh(dto: RefreshDto): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -166,7 +152,7 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
-  /** Ends the session server-side by invalidating the stored refresh token hash. */
+  // Clears the stored refresh token hash so the presented token can no longer be used, effectively logging out all sessions for the user.
   async logout(userId: string): Promise<{ message: string }> {
     await this.userModel
       .findByIdAndUpdate(userId, { $unset: { refreshToken: 1 } })
@@ -174,15 +160,12 @@ export class AuthService {
     return { message: 'Logged out.' };
   }
 
-  /** Static catalog for onboarding UI (labels and subtext per {@link UserAccountType}). */
+  // Returns the available account types for onboarding; currently static but could be dynamic in the future.
   getAccountTypes() {
     return { accountTypes: ACCOUNT_TYPE_OPTIONS };
   }
 
-  /**
-   * Persists the user’s marketplace role after signup; drives which onboarding profile and
-   * document endpoints apply.
-   */
+// Updates the user’s account type selection for onboarding; no validation beyond existence since frontend controls options.
   async chooseAccountType(
     userId: string,
     dto: ChooseAccountTypeDto,
@@ -199,11 +182,7 @@ export class AuthService {
     };
   }
 
-  /**
-   * If the user can log in with a password, stores a short-lived reset secret (hashed) and
-   * emails a link built from {@code PASSWORD_RESET_REDIRECT_URL} plus a token. Same generic
-   * message is returned when no reset is sent to avoid email enumeration.
-   */
+// Initiates the forgot password flow by generating a password reset token, saving its hash and expiry on the user, and emailing a link with the plaintext token as a query param.
   async forgotPassword(dto: EmailBodyDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
@@ -234,6 +213,7 @@ export class AuthService {
 
     const secret = createPasswordResetSecret();
     const token = encodePasswordResetToken(user._id.toString(), secret);
+    console.log("Generated password reset token", token); // Log the token for debugging; remove in production
     user.passwordResetTokenHash = await bcrypt.hash(secret, 10);
     user.passwordResetExpires = new Date(Date.now() + getPasswordResetTtlMs());
     await user.save();
@@ -244,10 +224,7 @@ export class AuthService {
     return generic;
   }
 
-  /**
-   * Validates the token’s user id, expiry, and secret against the stored hash, then sets a
-   * new password and clears reset + refresh state so old sessions cannot be refreshed.
-   */
+// Completes the password reset by verifying the token, then updating the password and clearing reset-related fields so the link cannot be reused.
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
     const parsed = decodePasswordResetToken(dto.token);
     if (!parsed) {
@@ -285,10 +262,7 @@ export class AuthService {
     return { message: 'Password updated. Please sign in again.' };
   }
 
-  /**
-   * Signs a short-lived JWT and persists a new bcrypt-hashed refresh token, returning the
-   * plaintext refresh once (client must store it; DB only keeps the hash).
-   */
+// Helper to issue a new access token and refresh token pair for a user; refresh token is stored hashed on the user for later verification, while the plaintext is returned for client use.
   private async issueTokens(user: User): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -309,4 +283,12 @@ export class AuthService {
       expiresIn,
     };
   }
-}
+
+  async getCurrentUser(userId: string): Promise<Partial<User>> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+    return user;
+  }
+  }
