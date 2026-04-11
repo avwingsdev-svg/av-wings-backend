@@ -21,7 +21,12 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChooseAccountTypeDto } from './dto/choose-account-type.dto';
-import { createPasswordResetSecret, decodePasswordResetToken, encodePasswordResetToken, getPasswordResetTtlMs } from 'src/common/utils/password-reset-token.util';
+import {
+  createPasswordResetSecret,
+  decodePasswordResetToken,
+  encodePasswordResetToken,
+  getPasswordResetTtlMs,
+} from '../common/utils/password-reset-token.util';
 import { ACCOUNT_TYPE_OPTIONS } from '../account-types/account-type-options';
 
 
