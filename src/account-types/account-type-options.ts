@@ -30,7 +30,7 @@ export const ACCOUNT_TYPE_OPTIONS: AccountTypeOption[] = [
   {
     id: UserAccountType.HBU_PARTNER,
     title: 'HBU Partner',
-    subText: 'Manage airport services',
+    subText: 'Manage airport services'
   },
   {
     id: UserAccountType.ADMIN,
