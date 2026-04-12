@@ -116,7 +116,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
     if (!user.isEmailVerified) {
-      throw new UnauthorizedException('Email not verified.');
+    const otp = await this.otpService.issueOtp(email);
+    await this.mailService.sendSignupOtp(email, otp);
+    throw new UnauthorizedException('Email not verified. Please check your email to verify with code.');
     }
 
     const match = await bcrypt.compare(dto.password, user.password);
