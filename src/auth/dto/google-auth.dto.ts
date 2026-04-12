@@ -1,7 +1,8 @@
 import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
 import { UserAccountType } from '../../schema/User.schema';
 
-export class SignupDto {
+/** Body for POST /auth/google — no password; verification comes from the IdP. */
+export class GoogleAuthDto {
   @IsString()
   @MinLength(1)
   fullName: string;
@@ -14,20 +15,12 @@ export class SignupDto {
   phoneNumber: string;
 
   @IsString()
-  @IsOptional()
-  authProvider: string;
-
-  @IsString()
-  @IsOptional()
-  googleId?: string;
+  @MinLength(1)
+  googleId: string;
 
   @IsString()
   @IsOptional()
   avatarImage?: string;
-
-  @IsString()
-  @MinLength(8)
-  password: string;
 
   @IsOptional()
   @IsEnum(UserAccountType)

@@ -2,6 +2,7 @@ import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
+import { GoogleAuthDto } from './dto/google-auth.dto';
 import { SignupVerifyDto } from './dto/signup-verify.dto';
 import { EmailBodyDto } from './dto/email-body.dto';
 import { LoginDto } from './dto/login.dto';
@@ -24,12 +25,8 @@ export class AuthController {
   }
 
   @Patch('onboarding/account-type')
-  @UseGuards(JwtAuthGuard)
-  chooseAccountType(
-    @CurrentUser('userId') userId: string,
-    @Body() dto: ChooseAccountTypeDto,
-  ) {
-    return this.authService.chooseAccountType(userId, dto);
+  chooseAccountType(@Body() dto: ChooseAccountTypeDto) {
+    return this.authService.chooseAccountType(dto);
   }
 
   @Post('signup')
@@ -89,5 +86,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   getCurrentUser(@CurrentUser('userId') userId: string) {
     return this.authService.getCurrentUser(userId);
+  }
+
+  @Post('google')
+  googleAuth(@Body() dto: GoogleAuthDto) {
+    return this.authService.googleAuth(dto);
   }
 }

@@ -15,6 +15,7 @@ import { User, UserAccountType } from '../schema/User.schema';
 import { OtpService } from '../otp/otp.service';
 import { MailService } from '../mail/mail.service';
 import { SignupDto } from './dto/signup.dto';
+import { GoogleAuthDto } from './dto/google-auth.dto';
 import { SignupVerifyDto } from './dto/signup-verify.dto';
 import { EmailBodyDto } from './dto/email-body.dto';
 import { LoginDto } from './dto/login.dto';
@@ -30,10 +31,9 @@ import {
 import { ACCOUNT_TYPE_OPTIONS } from '../account-types/account-type-options';
 
 
-
 const REFRESH_TOKEN_BYTES = 48;
 
-/// Core authentication logic for registration, sessions, password reset, and onboarding account types.
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -44,7 +44,6 @@ export class AuthService {
   ) {}
 
 
-  // Registers a new user by creating the account with unverified email, issuing an OTP, and emailing that OTP for verification before login is allowed.
   async signup(dto: SignupDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
     const existing = await this.userModel.findOne({ email }).exec();
@@ -69,7 +68,7 @@ export class AuthService {
     return { message: 'Verification code sent to your email.' };
   }
 
-// Verifies the OTP and marks the email as verified so the user can log in; OTP must be valid and unused.
+
   async verifySignup(dto: SignupVerifyDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
@@ -84,36 +83,31 @@ export class AuthService {
     user.isEmailVerified = true;
     await user.save();
 
-    return { message: 'Email verified' };
+    return { message: 'Email verified. You can set your password when ready.' };
   }
 
- // Resends a new OTP for email verification if the account exists and is not yet verified; always returns the same generic message to avoid enumeration.
+
   async resendSignupOtp(dto: EmailBodyDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
-    console.log("user data", user);
     const generic = {
-      message: 'If an unverified account exists with this email, a new verification code was sent.',
+      message: 'If an account exists and needs verification, a code was sent.',
     };
 
     if (!user || user.isEmailVerified) {
-      console.log("print generic", generic);
       return generic;
     }
 
-
-    const otp = await this.otpService.issueOtp(user.email);
-    await this.mailService.sendSignupOtp(user.email, otp);
+    const otp = await this.otpService.issueOtp(email);
+    await this.mailService.sendSignupOtp(email, otp);
     return generic;
   }
 
-// Logins by verifying email and password, then issues JWT access and opaque refresh tokens (the latter stored hashed in the DB for later verification).
+
   async login(dto: LoginDto): Promise<{
     accessToken: string;
     refreshToken: string;
     expiresIn: string;
-    email: string;
-    accountType: UserAccountType | undefined;
   }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
@@ -127,18 +121,13 @@ export class AuthService {
 
     const match = await bcrypt.compare(dto.password, user.password);
     if (!match) {
-      throw new UnauthorizedException('Invalid email or password.')
+      throw new UnauthorizedException('Invalid email or password.');
     }
 
-
-    return {
-      email: user.email,
-      accountType: user.accountType,
-      ...(await this.issueTokens(user)),
-    };
+    return this.issueTokens(user);
   }
 
-// Rotates session by verifying the presented refresh token against the bcrypt hash stored on the user; email in the body ties the opaque token to the correct account.
+
   async refresh(dto: RefreshDto): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -159,7 +148,6 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
-  // Clears the stored refresh token hash so the presented token can no longer be used, effectively logging out all sessions for the user.
   async logout(userId: string): Promise<{ message: string }> {
     await this.userModel
       .findByIdAndUpdate(userId, { $unset: { refreshToken: 1 } })
@@ -167,17 +155,17 @@ export class AuthService {
     return { message: 'Logged out.' };
   }
 
-  // Returns the available account types for onboarding; currently static but could be dynamic in the future.
+
   getAccountTypes() {
     return { accountTypes: ACCOUNT_TYPE_OPTIONS };
   }
 
-// Updates the user’s account type selection for onboarding; no validation beyond existence since frontend controls options.
+
   async chooseAccountType(
-    userId: string,
     dto: ChooseAccountTypeDto,
   ): Promise<{ message: string; accountType: UserAccountType }> {
-    const user = await this.userModel.findById(userId).exec();
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.userModel.findOne({ email }).exec();
     if (!user) {
       throw new NotFoundException('User not found.');
     }
@@ -189,7 +177,7 @@ export class AuthService {
     };
   }
 
-// Initiates the forgot password flow by generating a password reset token, saving its hash and expiry on the user, and emailing a link with the plaintext token as a query param.
+
   async forgotPassword(dto: EmailBodyDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
@@ -220,7 +208,6 @@ export class AuthService {
 
     const secret = createPasswordResetSecret();
     const token = encodePasswordResetToken(user._id.toString(), secret);
-    console.log("Generated password reset token", token); // Log the token for debugging; remove in production
     user.passwordResetTokenHash = await bcrypt.hash(secret, 10);
     user.passwordResetExpires = new Date(Date.now() + getPasswordResetTtlMs());
     await user.save();
@@ -231,7 +218,7 @@ export class AuthService {
     return generic;
   }
 
-// Completes the password reset by verifying the token, then updating the password and clearing reset-related fields so the link cannot be reused.
+
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
     const parsed = decodePasswordResetToken(dto.token);
     if (!parsed) {
@@ -269,7 +256,6 @@ export class AuthService {
     return { message: 'Password updated. Please sign in again.' };
   }
 
-// Helper to issue a new access token and refresh token pair for a user; refresh token is stored hashed on the user for later verification, while the plaintext is returned for client use.
   private async issueTokens(user: User): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -296,6 +282,81 @@ export class AuthService {
     if (!user) {
       throw new NotFoundException('User not found.');
     }
-    return user;
+    return {
+      fullName: user.fullName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      accountType: user.accountType,
+    };  
   }
+
+ 
+  // Google OAuth flow: if email exists with non-Google auth, reject; if email exists with Google auth but different Google ID, reject; otherwise create or update user with Google details and issue tokens. This allows seamless linking of Google accounts to existing users who may have signed up with email/password but haven't set a password yet (e.g. signed up with Google but didn't verify email, so they have no password).
+  async googleAuth(dto: GoogleAuthDto): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    expiresIn: string;
+  }> {
+    const email = dto.email.trim().toLowerCase();
+    const googleId = dto.googleId.trim();
+
+    const existingByEmail = await this.userModel.findOne({ email }).exec();
+
+    if (existingByEmail) {
+      const sameGoogleIdentity =
+        existingByEmail.googleId != null &&
+        existingByEmail.googleId === googleId;
+      const registeredWithGoogle =
+        existingByEmail.authProvider === 'google' || sameGoogleIdentity;
+
+      if (!registeredWithGoogle) {
+        throw new ConflictException(
+          'This email is already registered without Google. Sign in with your email and password.',
+        );
+      }
+      if (
+        existingByEmail.googleId != null &&
+        existingByEmail.googleId !== googleId
+      ) {
+        throw new ConflictException(
+          'This email is linked to a different Google account.',
+        );
+      }
+      existingByEmail.googleId = googleId;
+      existingByEmail.authProvider = 'google';
+      existingByEmail.fullName = dto.fullName.trim();
+      existingByEmail.phoneNumber = dto.phoneNumber.trim();
+      existingByEmail.isEmailVerified = true;
+      if (dto.avatarImage !== undefined) {
+        existingByEmail.avatarImage =
+          dto.avatarImage.trim() || 'default-avatar.png';
+      }
+      if (dto.accountType !== undefined) {
+        existingByEmail.accountType = dto.accountType;
+      }
+      await existingByEmail.save();
+      return this.issueTokens(existingByEmail);
+    }
+
+    const existingByGoogleId = await this.userModel.findOne({ googleId }).exec();
+    if (existingByGoogleId) {
+      throw new ConflictException(
+        'This Google account is already linked to another email address.',
+      );
+    }
+
+    const created = await this.userModel.create({
+      fullName: dto.fullName.trim(),
+      email,
+      phoneNumber: dto.phoneNumber.trim(),
+      googleId,
+      authProvider: 'google',
+      avatarImage: dto.avatarImage?.trim() || 'default-avatar.png',
+      isEmailVerified: true,
+      isPasswordSet: false,
+      accountType: dto.accountType,
+    });
+
+    return this.issueTokens(created);
   }
+}

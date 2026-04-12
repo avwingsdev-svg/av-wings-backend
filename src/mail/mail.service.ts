@@ -6,7 +6,7 @@ import {
 import * as nodemailer from 'nodemailer';
 import { loadEmailProviderEnv } from './email-provider.config';
 import type { EmailProviderEnv } from './email-provider.config';
-import { signupOtpEmailContent } from './templates/signup-otp.template';
+import { signupEmailContent, signupOtpEmailContent } from './templates/signup-otp.template';
 import { passwordResetLinkEmailContent } from './templates/password-reset-link.template';
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
@@ -22,6 +22,14 @@ export class MailService {
     const { subject, html } = signupOtpEmailContent(
       env.appName ?? '',
       otp,
+    );
+    await this.deliver(to, subject, html, env);
+  }
+
+    async sendSignupMail(to: string): Promise<void> {
+    const env = loadEmailProviderEnv();
+    const { subject, html } = signupEmailContent(
+      env.appName ?? '',
     );
     await this.deliver(to, subject, html, env);
   }

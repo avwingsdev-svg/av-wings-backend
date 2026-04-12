@@ -50,11 +50,24 @@ export class User extends Document {
   @Prop({ required: true })
   phoneNumber: string;
 
+  @Prop({ unique: true, sparse: true })
+  authProvider: string;
+
+  @Prop({ default: 'default-avatar.png' })
+  avatarImage?: string;
+
+  @Prop({ unique: true, sparse: true })
+  googleId?: string;
+
+  @Prop({ default: false })
+  isVerified?: boolean;
+
   @Prop({ enum: UserAccountType })
   accountType?: UserAccountType;
 
-  @Prop({ required: true })
-  password: string;
+  /** Set for password login; omitted for OAuth-only accounts until the user sets a password. */
+  @Prop({ required: false })
+  password?: string;
 
   @Prop({ default: false })
   isEmailVerified: boolean;
