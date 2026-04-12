@@ -112,6 +112,8 @@ export class AuthService {
     accessToken: string;
     refreshToken: string;
     expiresIn: string;
+    email: string;
+    accountType: UserAccountType | undefined;
   }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
@@ -128,7 +130,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    return this.issueTokens(user);
+
+    return {
+      email: user.email,
+      accountType: user.accountType,
+      ...(await this.issueTokens(user)),
+    };
   }
 
 // Rotates session by verifying the presented refresh token against the bcrypt hash stored on the user; email in the body ties the opaque token to the correct account.

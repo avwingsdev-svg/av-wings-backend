@@ -29,6 +29,7 @@ export enum UserAccountType {
   PILOT = 'PILOT',
   ENGINEER_CREW = 'ENGINEER_CREW',
   HBU_PARTNER = 'HBU_PARTNER',
+  ADMIN = 'ADMIN',
 }
 
 export enum VerificationStatus {

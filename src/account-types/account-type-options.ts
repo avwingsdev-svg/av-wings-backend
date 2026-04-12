@@ -32,4 +32,9 @@ export const ACCOUNT_TYPE_OPTIONS: AccountTypeOption[] = [
     title: 'HBU Partner',
     subText: 'Manage airport services',
   },
+  {
+    id: UserAccountType.ADMIN,
+    title: 'Admin',
+    subText: 'Internal use only',
+  }
 ];
