@@ -127,7 +127,7 @@ export class AuthService {
 
     const match = await bcrypt.compare(dto.password, user.password);
     if (!match) {
-      throw new UnauthorizedException('Invalid email or password.');
+      throw new UnauthorizedException('Invalid email or password.')
     }
 
 
