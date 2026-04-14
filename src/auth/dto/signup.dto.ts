@@ -10,6 +10,7 @@ export class SignupDto {
   email: string;
 
   @IsString()
+  @MinLength(1)
   phoneNumber: string;
 
   @IsString()

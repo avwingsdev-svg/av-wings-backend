@@ -108,6 +108,9 @@ export class AuthService {
     accessToken: string;
     refreshToken: string;
     expiresIn: string;
+    email: string,
+    accountType?: UserAccountType;
+    isEmailVerified: Boolean
   }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
@@ -126,7 +129,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    return this.issueTokens(user);
+    return {
+      ...await this.issueTokens(user),
+      email: user.email,
+      accountType: user.accountType,
+      isEmailVerified: user.isEmailVerified,
+    }
   }
 
 

@@ -50,7 +50,7 @@ export class User extends Document {
   @Prop({ required: true })
   phoneNumber: string;
 
-  @Prop({ unique: true, sparse: true })
+  @Prop()
   authProvider: string;
 
   @Prop({ default: 'default-avatar.png' })
