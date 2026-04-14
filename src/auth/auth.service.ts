@@ -306,6 +306,9 @@ export class AuthService {
     accessToken: string;
     refreshToken: string;
     expiresIn: string;
+    email: string;
+    accountType?: UserAccountType;
+    isEmailVerified: Boolean;
   }> {
     const email = dto.email.trim().toLowerCase();
     const googleId = dto.googleId.trim();
@@ -345,7 +348,12 @@ export class AuthService {
         existingByEmail.accountType = dto.accountType;
       }
       await existingByEmail.save();
-      return this.issueTokens(existingByEmail);
+      return {
+        ...await this.issueTokens(existingByEmail),
+        email: existingByEmail.email,
+        accountType: existingByEmail.accountType,
+        isEmailVerified: existingByEmail.isEmailVerified,
+      }
     }
 
     const existingByGoogleId = await this.userModel.findOne({ googleId }).exec();
@@ -367,6 +375,11 @@ export class AuthService {
       accountType: dto.accountType,
     });
 
-    return this.issueTokens(created);
+    return {
+      ...await this.issueTokens(created),
+      email: created.email,
+      accountType: created.accountType,
+      isEmailVerified: created.isEmailVerified,
+    }
   }
 }
