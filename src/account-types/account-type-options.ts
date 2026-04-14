@@ -7,7 +7,6 @@ export type AccountTypeOption = {
 };
 
 
-
 export const ACCOUNT_TYPE_OPTIONS: AccountTypeOption[] = [
   {
     id: UserAccountType.PRIVATE_CLIENT_BROKER,
