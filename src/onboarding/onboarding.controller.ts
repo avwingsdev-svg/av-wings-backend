@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Patch,
   Post,
   UploadedFile,
@@ -46,10 +47,9 @@ export class OnboardingController {
     return this.onboardingService.acceptTerms(userId, dto);
   }
 
-  @Patch('profile/private-client')
-  @UseGuards(JwtAuthGuard)
+  @Patch('profile/private-client/:userId')
   updatePrivateClient(
-    @CurrentUser('userId') userId: string,
+    @Param('userId') userId: string,
     @Body() dto: PrivateClientProfileDto,
   ) {
     return this.onboardingService.updatePrivateClientProfile(userId, dto);
@@ -103,8 +103,8 @@ export class OnboardingController {
     return this.onboardingService.uploadAvatar(userId, file);
   }
 
-  @Post('documents/private-client')
-  @UseGuards(JwtAuthGuard)
+  @Post('documents/private-client/:userId')
+  // @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor(
       [
@@ -115,7 +115,8 @@ export class OnboardingController {
     ),
   )
   uploadPrivateClientDocs(
-    @CurrentUser('userId') userId: string,
+    // @CurrentUser('userId') userId: string,
+    @Param('userId') userId: string,
     @UploadedFiles()
     files: {
       passport?: Express.Multer.File[];

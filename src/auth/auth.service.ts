@@ -288,16 +288,11 @@ export class AuthService {
   }
 
   async getCurrentUser(userId: string): Promise<Partial<User>> {
-    const user = await this.userModel.findById(userId).exec();
+    const user = await this.userModel.findById(userId).select('-password').exec();
     if (!user) {
       throw new NotFoundException('User not found.');
     }
-    return {
-      fullName: user.fullName,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-      accountType: user.accountType,
-    };  
+    return user  
   }
 
  
