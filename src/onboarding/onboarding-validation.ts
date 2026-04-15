@@ -150,6 +150,19 @@ export function getMissingDocumentKeys(user: User): string[] {
   }
 }
 
+/** Whether required profile text fields for the current account type are filled. */
+export function computeProfileDetailsComplete(user: User): boolean {
+  const missingProfileFields = getMissingProfileFields(user);
+  return Boolean(user.accountType) && missingProfileFields.length === 0;
+}
+
+/** Whether required documents are uploaded or the user skipped the document step. */
+export function computeDocumentsComplete(user: User): boolean {
+  const missingDocumentKeys = getMissingDocumentKeys(user);
+  const documentsSkipped = Boolean(user.onboardingDocumentsSkippedAt);
+  return missingDocumentKeys.length === 0 || documentsSkipped;
+}
+
 /**
  * Ordered funnel: account type → terms → avatar → profile text → documents → submit vs done,
  * with special cases once verification leaves the pending state.
@@ -202,13 +215,10 @@ export function buildOnboardingStatus(user: User): OnboardingStatusPayload {
   const avatarComplete = Boolean(user.profileAvatarKey);
   const missingProfileFields = getMissingProfileFields(user);
   const missingDocumentKeys = getMissingDocumentKeys(user);
-  const profileDetailsComplete =
-    Boolean(user.accountType) && missingProfileFields.length === 0;
+  const profileDetailsComplete = computeProfileDetailsComplete(user);
   const profileComplete = avatarComplete && profileDetailsComplete;
   const documentsSkipped = Boolean(user.onboardingDocumentsSkippedAt);
-  // User may explicitly skip uploads; that still counts as “documents step done” for gating submit.
-  const documentsComplete =
-    missingDocumentKeys.length === 0 || documentsSkipped;
+  const documentsComplete = computeDocumentsComplete(user);
   const verificationStatus =
     user.verificationStatus ?? VerificationStatus.PENDING;
   const canSubmit =

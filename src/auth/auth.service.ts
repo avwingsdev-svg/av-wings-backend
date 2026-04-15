@@ -29,6 +29,11 @@ import {
   getPasswordResetTtlMs,
 } from '../common/utils/password-reset-token.util';
 import { ACCOUNT_TYPE_OPTIONS } from '../account-types/account-type-options';
+import { OnboardingService } from '../onboarding/onboarding.service';
+import {
+  computeDocumentsComplete,
+  computeProfileDetailsComplete,
+} from '../onboarding/onboarding-validation';
 
 
 const REFRESH_TOKEN_BYTES = 48;
@@ -41,6 +46,7 @@ export class AuthService {
     private readonly otpService: OtpService,
     private readonly mailService: MailService,
     private readonly jwtService: JwtService,
+    private readonly onboardingService: OnboardingService,
   ) {}
 
 
@@ -108,9 +114,11 @@ export class AuthService {
     accessToken: string;
     refreshToken: string;
     expiresIn: string;
-    email: string,
+    email: string;
     accountType?: UserAccountType;
-    isEmailVerified: Boolean
+    isEmailVerified: boolean;
+    profileDetailsComplete: boolean;
+    documentsComplete: boolean;
   }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
@@ -119,9 +127,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
     if (!user.isEmailVerified) {
-    const otp = await this.otpService.issueOtp(email);
-    await this.mailService.sendSignupOtp(email, otp);
-    throw new UnauthorizedException('Email not verified. Please check your email to verify with code.');
+      const otp = await this.otpService.issueOtp(email);
+      await this.mailService.sendSignupOtp(email, otp);
+      throw new UnauthorizedException(
+        'Email not verified. Please check your email to verify with code.',
+      );
     }
 
     const match = await bcrypt.compare(dto.password, user.password);
@@ -129,12 +139,18 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
+    await this.onboardingService.syncOnboardingCompletionFlagsForUserId(
+      user._id.toString(),
+    );
+
     return {
       ...await this.issueTokens(user),
       email: user.email,
       accountType: user.accountType,
       isEmailVerified: user.isEmailVerified,
-    }
+      profileDetailsComplete: computeProfileDetailsComplete(user),
+      documentsComplete: computeDocumentsComplete(user),
+    };
   }
 
 
@@ -181,6 +197,9 @@ export class AuthService {
     }
     user.accountType = dto.accountType;
     await user.save();
+    await this.onboardingService.syncOnboardingCompletionFlagsForUserId(
+      user._id.toString(),
+    );
     return {
       message: 'Account type saved.',
       accountType: user.accountType,
@@ -343,6 +362,9 @@ export class AuthService {
         existingByEmail.accountType = dto.accountType;
       }
       await existingByEmail.save();
+      await this.onboardingService.syncOnboardingCompletionFlagsForUserId(
+        existingByEmail._id.toString(),
+      );
       return {
         ...await this.issueTokens(existingByEmail),
         email: existingByEmail.email,
@@ -369,6 +391,10 @@ export class AuthService {
       isPasswordSet: false,
       accountType: dto.accountType,
     });
+
+    await this.onboardingService.syncOnboardingCompletionFlagsForUserId(
+      created._id.toString(),
+    );
 
     return {
       ...await this.issueTokens(created),

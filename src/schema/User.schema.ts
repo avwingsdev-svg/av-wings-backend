@@ -99,6 +99,14 @@ export class User extends Document {
   @Prop()
   onboardingDocumentsSkippedAt?: Date;
 
+  /** Cached from onboarding rules; updated when profile or documents change. */
+  @Prop({ default: false })
+  profileDetailsComplete?: boolean;
+
+  /** Cached from onboarding rules; updated when profile or documents change. */
+  @Prop({ default: false })
+  documentsComplete?: boolean;
+
   @Prop({ type: PrivateClientProfileSchema })
   privateClientProfile?: PrivateClientProfileData;
 

@@ -11,6 +11,8 @@ import { validateUploadFile } from '../common/storage/upload-validation';
 import { AcceptTermsDto } from './dto/accept-terms.dto';
 import {
   buildOnboardingStatus,
+  computeDocumentsComplete,
+  computeProfileDetailsComplete,
   getMissingDocumentKeys,
   getMissingProfileFields,
 } from './onboarding-validation';
@@ -36,7 +38,17 @@ export class OnboardingService {
     if (!user) {
       throw new NotFoundException('User not found.');
     }
-    return buildOnboardingStatus(user);
+    const synced = await this.syncOnboardingCompletionFlags(user);
+    return buildOnboardingStatus(synced);
+  }
+
+  /** Keeps `profileDetailsComplete` / `documentsComplete` on User in sync (e.g. after account type changes in auth). */
+  async syncOnboardingCompletionFlagsForUserId(userId: string): Promise<void> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      return;
+    }
+    await this.syncOnboardingCompletionFlags(user);
   }
 
   // Legal gate: without acceptance timestamp, later steps should not proceed in the client.
@@ -75,7 +87,8 @@ export class OnboardingService {
     if (!user) {
       await this.throwIfProfileUpdateBlocked(email);
     }
-    return { message: 'Profile saved.', ...buildOnboardingStatus(user!) };
+    const synced = await this.syncOnboardingCompletionFlags(user!);
+    return { message: 'Profile saved.', ...buildOnboardingStatus(synced) };
   }
 
   async updateOperatorProfile(dto: OperatorProfilePostDto) {
@@ -102,7 +115,8 @@ export class OnboardingService {
     if (!user) {
       await this.throwIfProfileUpdateBlocked(email);
     }
-    return { message: 'Profile saved.', ...buildOnboardingStatus(user!) };
+    const synced = await this.syncOnboardingCompletionFlags(user!);
+    return { message: 'Profile saved.', ...buildOnboardingStatus(synced) };
   }
 
   async updatePilotProfile(dto: PilotProfilePostDto) {
@@ -129,7 +143,8 @@ export class OnboardingService {
     if (!user) {
       await this.throwIfProfileUpdateBlocked(email);
     }
-    return { message: 'Profile saved.', ...buildOnboardingStatus(user!) };
+    const synced = await this.syncOnboardingCompletionFlags(user!);
+    return { message: 'Profile saved.', ...buildOnboardingStatus(synced) };
   }
 
   async updateEngineerCrewProfile(dto: EngineerCrewProfilePostDto) {
@@ -156,7 +171,8 @@ export class OnboardingService {
     if (!user) {
       await this.throwIfProfileUpdateBlocked(email);
     }
-    return { message: 'Profile saved.', ...buildOnboardingStatus(user!) };
+    const synced = await this.syncOnboardingCompletionFlags(user!);
+    return { message: 'Profile saved.', ...buildOnboardingStatus(synced) };
   }
 
   async updateHbuPartnerProfile(dto: HbuPartnerProfilePostDto) {
@@ -182,7 +198,8 @@ export class OnboardingService {
     if (!user) {
       await this.throwIfProfileUpdateBlocked(email);
     }
-    return { message: 'Profile saved.', ...buildOnboardingStatus(user!) };
+    const synced = await this.syncOnboardingCompletionFlags(user!);
+    return { message: 'Profile saved.', ...buildOnboardingStatus(synced) };
   }
 
   // Persists profile photo URL/key required before final verification submit.
@@ -226,7 +243,8 @@ export class OnboardingService {
       );
     }
     await user.save();
-    return { message: 'Documents updated.', ...buildOnboardingStatus(user) };
+    const synced = await this.syncOnboardingCompletionFlags(user);
+    return { message: 'Documents updated.', ...buildOnboardingStatus(synced) };
   }
 
   // Operator AOC, insurance, and business license evidence.
@@ -265,7 +283,8 @@ export class OnboardingService {
       );
     }
     await user.save();
-    return { message: 'Documents updated.', ...buildOnboardingStatus(user) };
+    const synced = await this.syncOnboardingCompletionFlags(user);
+    return { message: 'Documents updated.', ...buildOnboardingStatus(synced) };
   }
 
   // Pilot license (front/back) and medical certificate.
@@ -304,7 +323,8 @@ export class OnboardingService {
       );
     }
     await user.save();
-    return { message: 'Documents updated.', ...buildOnboardingStatus(user) };
+    const synced = await this.syncOnboardingCompletionFlags(user);
+    return { message: 'Documents updated.', ...buildOnboardingStatus(synced) };
   }
 
   // Engineer/crew professional license and background check.
@@ -336,7 +356,8 @@ export class OnboardingService {
       );
     }
     await user.save();
-    return { message: 'Documents updated.', ...buildOnboardingStatus(user) };
+    const synced = await this.syncOnboardingCompletionFlags(user);
+    return { message: 'Documents updated.', ...buildOnboardingStatus(synced) };
   }
 
   // HBU partner registration and facility/service certificates.
@@ -369,7 +390,8 @@ export class OnboardingService {
         );
     }
     await user.save();
-    return { message: 'Documents updated.', ...buildOnboardingStatus(user) };
+    const synced = await this.syncOnboardingCompletionFlags(user);
+    return { message: 'Documents updated.', ...buildOnboardingStatus(synced) };
   }
 
 // New evidence invalidates an earlier “skip documents” decision.
@@ -380,14 +402,19 @@ export class OnboardingService {
     }
     user.onboardingDocumentsSkippedAt = new Date();
     await user.save();
-    return { message: 'Document step skipped.', ...buildOnboardingStatus(user) };
+    const synced = await this.syncOnboardingCompletionFlags(user);
+    return {
+      message: 'Document step skipped.',
+      ...buildOnboardingStatus(synced),
+    };
   }
 
 
   // Final submission endpoint checks all requirements and moves status to SUBMITTED if valid.
   async submitForVerification(userId: string) {
     const user = await this.requireUser(userId);
-    const status = buildOnboardingStatus(user);
+    const synced = await this.syncOnboardingCompletionFlags(user);
+    const status = buildOnboardingStatus(synced);
     if (!status.termsAccepted) {
       throw new BadRequestException('Accept the terms before submitting.');
     }
@@ -399,24 +426,24 @@ export class OnboardingService {
     if (!status.profileDetailsComplete) {
       throw new BadRequestException({
         message: 'Profile details are incomplete.',
-        missingProfileFields: getMissingProfileFields(user),
+        missingProfileFields: getMissingProfileFields(synced),
       });
     }
     if (!status.documentsComplete) {
       throw new BadRequestException({
         message: 'Upload all required documents or skip this step.',
-        missingDocumentKeys: getMissingDocumentKeys(user),
+        missingDocumentKeys: getMissingDocumentKeys(synced),
       });
     }
-    const v = user.verificationStatus ?? VerificationStatus.PENDING;
+    const v = synced.verificationStatus ?? VerificationStatus.PENDING;
     if (v !== VerificationStatus.PENDING) {
       throw new BadRequestException('Verification already submitted or decided.');
     }
-    user.verificationStatus = VerificationStatus.SUBMITTED;
-    await user.save();
+    synced.verificationStatus = VerificationStatus.SUBMITTED;
+    await synced.save();
     return {
       message: 'Submitted for verification.',
-      verificationStatus: user.verificationStatus,
+      verificationStatus: synced.verificationStatus,
     };
   }
 
@@ -463,6 +490,26 @@ export class OnboardingService {
       throw new NotFoundException('User not found.');
     }
     return user;
+  }
+
+  /** Persists `profileDetailsComplete` and `documentsComplete` from the same rules as the onboarding API. */
+  private async syncOnboardingCompletionFlags(user: User): Promise<User> {
+    const profileDetailsComplete = computeProfileDetailsComplete(user);
+    const documentsComplete = computeDocumentsComplete(user);
+    if (
+      user.profileDetailsComplete === profileDetailsComplete &&
+      user.documentsComplete === documentsComplete
+    ) {
+      return user;
+    }
+    const updated = await this.userModel
+      .findByIdAndUpdate(
+        user._id,
+        { $set: { profileDetailsComplete, documentsComplete } },
+        { new: true },
+      )
+      .exec();
+    return updated ?? user;
   }
 
   /** When findOneAndUpdate matches no document: wrong email, missing account type, or type mismatch. */
