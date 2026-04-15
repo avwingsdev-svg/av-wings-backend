@@ -9,16 +9,18 @@ import { User, UserAccountType, VerificationStatus } from '../schema/User.schema
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { validateUploadFile } from '../common/storage/upload-validation';
 import { AcceptTermsDto } from './dto/accept-terms.dto';
-import { OperatorProfileDto } from './dto/operator-profile.dto';
-import { PilotProfileDto } from './dto/pilot-profile.dto';
-import { EngineerCrewProfileDto } from './dto/engineer-crew-profile.dto';
-import { HbuPartnerProfileDto } from './dto/hbu-partner-profile.dto';
 import {
   buildOnboardingStatus,
   getMissingDocumentKeys,
   getMissingProfileFields,
 } from './onboarding-validation';
-import { PrivateClientProfileDto } from './dto/private-client-profile.dto';
+import {
+  EngineerCrewProfilePostDto,
+  HbuPartnerProfilePostDto,
+  OperatorProfilePostDto,
+  PilotProfilePostDto,
+  PrivateClientProfilePostDto,
+} from './dto/onboarding-profile-post.dto';
 
 
 @Injectable()
@@ -48,78 +50,139 @@ export class OnboardingService {
     return { message: 'Terms accepted.', ...buildOnboardingStatus(user) };
   }
 
-  // Writes private-client/broker profile slice; rejected if account type does not match.
-  async updatePrivateClientProfile(
-    userId: string,
-    dto: PrivateClientProfileDto,
-  ) {
-    const user = await this.requireUser(userId);
-    this.assertAccountType(user, UserAccountType.PRIVATE_CLIENT_BROKER);
-    user.privateClientProfile = {
-      homeAddress: dto.homeAddress.trim(),
-      dateOfBirth: new Date(dto.dateOfBirth),
-      passportNumber: dto.passportNumber.trim(),
-      preferredAirport: dto.preferredAirport.trim(),
-    };
-    await user.save();
-    return { message: 'Profile saved.', ...buildOnboardingStatus(user) };
+  // Writes private-client/broker profile slice; lookup by email in body; findOneAndUpdate on User.
+  async updatePrivateClientProfile(dto: PrivateClientProfilePostDto) {
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.userModel
+      .findOneAndUpdate(
+        {
+          email,
+          accountType: UserAccountType.PRIVATE_CLIENT_BROKER,
+        },
+        {
+          $set: {
+            privateClientProfile: {
+              homeAddress: dto.homeAddress.trim(),
+              dateOfBirth: new Date(dto.dateOfBirth),
+              passportNumber: dto.passportNumber.trim(),
+              preferredAirport: dto.preferredAirport.trim(),
+            },
+          },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!user) {
+      await this.throwIfProfileUpdateBlocked(email);
+    }
+    return { message: 'Profile saved.', ...buildOnboardingStatus(user!) };
   }
 
-  // Operator fleet/AOC profile fields embedded on the user document.
-  async updateOperatorProfile(userId: string, dto: OperatorProfileDto) {
-    const user = await this.requireUser(userId);
-    this.assertAccountType(user, UserAccountType.OPERATOR);
-    user.operatorProfile = {
-      companyName: dto.companyName.trim(),
-      businessAddress: dto.businessAddress.trim(),
-      aocNumber: dto.aocNumber.trim(),
-      primaryBaseIcao: dto.primaryBaseIcao.trim(),
-    };
-    await user.save();
-    return { message: 'Profile saved.', ...buildOnboardingStatus(user) };
+  async updateOperatorProfile(dto: OperatorProfilePostDto) {
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.userModel
+      .findOneAndUpdate(
+        {
+          email,
+          accountType: UserAccountType.OPERATOR,
+        },
+        {
+          $set: {
+            operatorProfile: {
+              companyName: dto.companyName.trim(),
+              businessAddress: dto.businessAddress.trim(),
+              aocNumber: dto.aocNumber.trim(),
+              primaryBaseIcao: dto.primaryBaseIcao.trim(),
+            },
+          },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!user) {
+      await this.throwIfProfileUpdateBlocked(email);
+    }
+    return { message: 'Profile saved.', ...buildOnboardingStatus(user!) };
   }
 
-  // Pilot licensing and hours captured for verification.
-  async updatePilotProfile(userId: string, dto: PilotProfileDto) {
-    const user = await this.requireUser(userId);
-    this.assertAccountType(user, UserAccountType.PILOT);
-    user.pilotProfile = {
-      licenseNumber: dto.licenseNumber.trim(),
-      totalFlightHours: dto.totalFlightHours,
-      medicalClass: dto.medicalClass.trim(),
-      typeRatings: dto.typeRatings.trim(),
-    };
-    await user.save();
-    return { message: 'Profile saved.', ...buildOnboardingStatus(user) };
+  async updatePilotProfile(dto: PilotProfilePostDto) {
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.userModel
+      .findOneAndUpdate(
+        {
+          email,
+          accountType: UserAccountType.PILOT,
+        },
+        {
+          $set: {
+            pilotProfile: {
+              licenseNumber: dto.licenseNumber.trim(),
+              totalFlightHours: dto.totalFlightHours,
+              medicalClass: dto.medicalClass.trim(),
+              typeRatings: dto.typeRatings.trim(),
+            },
+          },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!user) {
+      await this.throwIfProfileUpdateBlocked(email);
+    }
+    return { message: 'Profile saved.', ...buildOnboardingStatus(user!) };
   }
 
-  async updateEngineerCrewProfile(
-    userId: string,
-    dto: EngineerCrewProfileDto,
-  ) {
-    const user = await this.requireUser(userId);
-    this.assertAccountType(user, UserAccountType.ENGINEER_CREW);
-    user.engineerCrewProfile = {
-      specialty: dto.specialty.trim(),
-      yearsOfExperience: dto.yearsOfExperience,
-      licenseCertificationId: dto.licenseCertificationId.trim(),
-      languagesSpoken: dto.languagesSpoken.trim(),
-    };
-    await user.save();
-    return { message: 'Profile saved.', ...buildOnboardingStatus(user) };
+  async updateEngineerCrewProfile(dto: EngineerCrewProfilePostDto) {
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.userModel
+      .findOneAndUpdate(
+        {
+          email,
+          accountType: UserAccountType.ENGINEER_CREW,
+        },
+        {
+          $set: {
+            engineerCrewProfile: {
+              specialty: dto.specialty.trim(),
+              yearsOfExperience: dto.yearsOfExperience,
+              licenseCertificationId: dto.licenseCertificationId.trim(),
+              languagesSpoken: dto.languagesSpoken.trim(),
+            },
+          },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!user) {
+      await this.throwIfProfileUpdateBlocked(email);
+    }
+    return { message: 'Profile saved.', ...buildOnboardingStatus(user!) };
   }
 
-  // Airport services partner business profile.
-  async updateHbuPartnerProfile(userId: string, dto: HbuPartnerProfileDto) {
-    const user = await this.requireUser(userId);
-    this.assertAccountType(user, UserAccountType.HBU_PARTNER);
-    user.hbuPartnerProfile = {
-      businessName: dto.businessName.trim(),
-      airportIcaoOrIata: dto.airportIcaoOrIata.trim(),
-      servicesDescription: dto.servicesDescription.trim(),
-    };
-    await user.save();
-    return { message: 'Profile saved.', ...buildOnboardingStatus(user) };
+  async updateHbuPartnerProfile(dto: HbuPartnerProfilePostDto) {
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.userModel
+      .findOneAndUpdate(
+        {
+          email,
+          accountType: UserAccountType.HBU_PARTNER,
+        },
+        {
+          $set: {
+            hbuPartnerProfile: {
+              businessName: dto.businessName.trim(),
+              airportIcaoOrIata: dto.airportIcaoOrIata.trim(),
+              servicesDescription: dto.servicesDescription.trim(),
+            },
+          },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!user) {
+      await this.throwIfProfileUpdateBlocked(email);
+    }
+    return { message: 'Profile saved.', ...buildOnboardingStatus(user!) };
   }
 
   // Persists profile photo URL/key required before final verification submit.
@@ -137,26 +200,27 @@ export class OnboardingService {
 
 // Document uploads for each account type; later evidence clears any earlier “skip” decision.
   async uploadPrivateClientDocuments(
-    userId: string,
+    email: string,
     files: {
       passport?: Express.Multer.File[];
       governmentId?: Express.Multer.File[];
     },
   ) {
-    const user = await this.requireUser(userId);
+    const user = await this.requireUserByEmail(email);
     this.assertAccountType(user, UserAccountType.PRIVATE_CLIENT_BROKER);
+    const storageId = user._id.toString();
     this.clearDocumentsSkip(user);
     user.privateClientDocuments = user.privateClientDocuments ?? {};
     if (files.passport?.[0]) {
       user.privateClientDocuments.passportKey = await this.storeDocument(
-        userId,
+        storageId,
         'passport',
         files.passport[0],
       );
     }
     if (files.governmentId?.[0]) {
       user.privateClientDocuments.governmentIdKey = await this.storeDocument(
-        userId,
+        storageId,
         'governmentId',
         files.governmentId[0],
       );
@@ -167,34 +231,35 @@ export class OnboardingService {
 
   // Operator AOC, insurance, and business license evidence.
   async uploadOperatorDocuments(
-    userId: string,
+    email: string,
     files: {
       aocCertificate?: Express.Multer.File[];
       insurancePolicy?: Express.Multer.File[];
       businessLicense?: Express.Multer.File[];
     },
   ) {
-    const user = await this.requireUser(userId);
+    const user = await this.requireUserByEmail(email);
     this.assertAccountType(user, UserAccountType.OPERATOR);
+    const storageId = user._id.toString();
     this.clearDocumentsSkip(user);
     user.operatorDocuments = user.operatorDocuments ?? {};
     if (files.aocCertificate?.[0]) {
       user.operatorDocuments.aocCertificateKey = await this.storeDocument(
-        userId,
+        storageId,
         'aocCertificate',
         files.aocCertificate[0],
       );
     }
     if (files.insurancePolicy?.[0]) {
       user.operatorDocuments.insurancePolicyKey = await this.storeDocument(
-        userId,
+        storageId,
         'insurancePolicy',
         files.insurancePolicy[0],
       );
     }
     if (files.businessLicense?.[0]) {
       user.operatorDocuments.businessLicenseKey = await this.storeDocument(
-        userId,
+        storageId,
         'businessLicense',
         files.businessLicense[0],
       );
@@ -205,34 +270,35 @@ export class OnboardingService {
 
   // Pilot license (front/back) and medical certificate.
   async uploadPilotDocuments(
-    userId: string,
+    email: string,
     files: {
       pilotLicenseFront?: Express.Multer.File[];
       pilotLicenseBack?: Express.Multer.File[];
       medicalCertificate?: Express.Multer.File[];
     },
   ) {
-    const user = await this.requireUser(userId);
+    const user = await this.requireUserByEmail(email);
     this.assertAccountType(user, UserAccountType.PILOT);
+    const storageId = user._id.toString();
     this.clearDocumentsSkip(user);
     user.pilotDocuments = user.pilotDocuments ?? {};
     if (files.pilotLicenseFront?.[0]) {
       user.pilotDocuments.pilotLicenseFrontKey = await this.storeDocument(
-        userId,
+        storageId,
         'pilotLicenseFront',
         files.pilotLicenseFront[0],
       );
     }
     if (files.pilotLicenseBack?.[0]) {
       user.pilotDocuments.pilotLicenseBackKey = await this.storeDocument(
-        userId,
+        storageId,
         'pilotLicenseBack',
         files.pilotLicenseBack[0],
       );
     }
     if (files.medicalCertificate?.[0]) {
       user.pilotDocuments.medicalCertificateKey = await this.storeDocument(
-        userId,
+        storageId,
         'medicalCertificate',
         files.medicalCertificate[0],
       );
@@ -243,27 +309,28 @@ export class OnboardingService {
 
   // Engineer/crew professional license and background check.
   async uploadEngineerCrewDocuments(
-    userId: string,
+    email: string,
     files: {
       professionalLicense?: Express.Multer.File[];
       backgroundCheck?: Express.Multer.File[];
     },
   ) {
-    const user = await this.requireUser(userId);
+    const user = await this.requireUserByEmail(email);
     this.assertAccountType(user, UserAccountType.ENGINEER_CREW);
+    const storageId = user._id.toString();
     this.clearDocumentsSkip(user);
     user.engineerCrewDocuments = user.engineerCrewDocuments ?? {};
     if (files.professionalLicense?.[0]) {
       user.engineerCrewDocuments.professionalLicenseKey =
         await this.storeDocument(
-          userId,
+          storageId,
           'professionalLicense',
           files.professionalLicense[0],
         );
     }
     if (files.backgroundCheck?.[0]) {
       user.engineerCrewDocuments.backgroundCheckKey = await this.storeDocument(
-        userId,
+        storageId,
         'backgroundCheck',
         files.backgroundCheck[0],
       );
@@ -274,20 +341,21 @@ export class OnboardingService {
 
   // HBU partner registration and facility/service certificates.
   async uploadHbuPartnerDocuments(
-    userId: string,
+    email: string,
     files: {
       businessRegistration?: Express.Multer.File[];
       facilityOrServiceCertificate?: Express.Multer.File[];
     },
   ) {
-    const user = await this.requireUser(userId);
+    const user = await this.requireUserByEmail(email);
     this.assertAccountType(user, UserAccountType.HBU_PARTNER);
+    const storageId = user._id.toString();
     this.clearDocumentsSkip(user);
     user.hbuPartnerDocuments = user.hbuPartnerDocuments ?? {};
     if (files.businessRegistration?.[0]) {
       user.hbuPartnerDocuments.businessRegistrationKey =
         await this.storeDocument(
-          userId,
+          storageId,
           'businessRegistration',
           files.businessRegistration[0],
         );
@@ -295,7 +363,7 @@ export class OnboardingService {
     if (files.facilityOrServiceCertificate?.[0]) {
       user.hbuPartnerDocuments.facilityOrServiceCertificateKey =
         await this.storeDocument(
-          userId,
+          storageId,
           'facilityOrServiceCertificate',
           files.facilityOrServiceCertificate[0],
         );
@@ -386,6 +454,29 @@ export class OnboardingService {
       throw new NotFoundException('User not found.');
     }
     return user;
+  }
+
+  private async requireUserByEmail(rawEmail: string): Promise<User> {
+    const email = rawEmail.trim().toLowerCase();
+    const user = await this.userModel.findOne({ email }).exec();
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+    return user;
+  }
+
+  /** When findOneAndUpdate matches no document: wrong email, missing account type, or type mismatch. */
+  private async throwIfProfileUpdateBlocked(email: string): Promise<never> {
+    const found = await this.userModel.findOne({ email }).exec();
+    if (!found) {
+      throw new NotFoundException('User not found.');
+    }
+    if (!found.accountType) {
+      throw new BadRequestException('Select an account type first.');
+    }
+    throw new BadRequestException(
+      'This action does not match your account type.',
+    );
   }
 
   // New evidence invalidates an earlier “skip documents” decision.

@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Param,
   Patch,
   Post,
   UploadedFile,
@@ -19,11 +18,14 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { OnboardingService } from './onboarding.service';
 import { AcceptTermsDto } from './dto/accept-terms.dto';
-import { PrivateClientProfileDto } from './dto/private-client-profile.dto';
-import { OperatorProfileDto } from './dto/operator-profile.dto';
-import { PilotProfileDto } from './dto/pilot-profile.dto';
-import { EngineerCrewProfileDto } from './dto/engineer-crew-profile.dto';
-import { HbuPartnerProfileDto } from './dto/hbu-partner-profile.dto';
+import { OnboardingDocumentUploadDto } from './dto/onboarding-document-upload.dto';
+import {
+  EngineerCrewProfilePostDto,
+  HbuPartnerProfilePostDto,
+  OperatorProfilePostDto,
+  PilotProfilePostDto,
+  PrivateClientProfilePostDto,
+} from './dto/onboarding-profile-post.dto';
 
 /** Authenticated onboarding steps: profiles, document uploads, and verification submit. */
 @Controller('auth/onboarding')
@@ -47,48 +49,29 @@ export class OnboardingController {
     return this.onboardingService.acceptTerms(userId, dto);
   }
 
-  @Patch('profile/private-client/:userId')
-  updatePrivateClient(
-    @Param('userId') userId: string,
-    @Body() dto: PrivateClientProfileDto,
-  ) {
-    return this.onboardingService.updatePrivateClientProfile(userId, dto);
+  @Post('profile/private-client')
+  updatePrivateClient(@Body() dto: PrivateClientProfilePostDto) {
+    return this.onboardingService.updatePrivateClientProfile(dto);
   }
 
-  @Patch('profile/operator')
-  @UseGuards(JwtAuthGuard)
-  updateOperator(
-    @CurrentUser('userId') userId: string,
-    @Body() dto: OperatorProfileDto,
-  ) {
-    return this.onboardingService.updateOperatorProfile(userId, dto);
+  @Post('profile/operator')
+  updateOperator(@Body() dto: OperatorProfilePostDto) {
+    return this.onboardingService.updateOperatorProfile(dto);
   }
 
-  @Patch('profile/pilot')
-  @UseGuards(JwtAuthGuard)
-  updatePilot(
-    @CurrentUser('userId') userId: string,
-    @Body() dto: PilotProfileDto,
-  ) {
-    return this.onboardingService.updatePilotProfile(userId, dto);
+  @Post('profile/pilot')
+  updatePilot(@Body() dto: PilotProfilePostDto) {
+    return this.onboardingService.updatePilotProfile(dto);
   }
 
-  @Patch('profile/engineer-crew')
-  @UseGuards(JwtAuthGuard)
-  updateEngineerCrew(
-    @CurrentUser('userId') userId: string,
-    @Body() dto: EngineerCrewProfileDto,
-  ) {
-    return this.onboardingService.updateEngineerCrewProfile(userId, dto);
+  @Post('profile/engineer-crew')
+  updateEngineerCrew(@Body() dto: EngineerCrewProfilePostDto) {
+    return this.onboardingService.updateEngineerCrewProfile(dto);
   }
 
-  @Patch('profile/hbu-partner')
-  @UseGuards(JwtAuthGuard)
-  updateHbuPartner(
-    @CurrentUser('userId') userId: string,
-    @Body() dto: HbuPartnerProfileDto,
-  ) {
-    return this.onboardingService.updateHbuPartnerProfile(userId, dto);
+  @Post('profile/hbu-partner')
+  updateHbuPartner(@Body() dto: HbuPartnerProfilePostDto) {
+    return this.onboardingService.updateHbuPartnerProfile(dto);
   }
 
   @Post('profile/avatar')
@@ -103,8 +86,7 @@ export class OnboardingController {
     return this.onboardingService.uploadAvatar(userId, file);
   }
 
-  @Post('documents/private-client/:userId')
-  // @UseGuards(JwtAuthGuard)
+  @Post('documents/private-client')
   @UseInterceptors(
     FileFieldsInterceptor(
       [
@@ -115,19 +97,20 @@ export class OnboardingController {
     ),
   )
   uploadPrivateClientDocs(
-    // @CurrentUser('userId') userId: string,
-    @Param('userId') userId: string,
+    @Body() body: OnboardingDocumentUploadDto,
     @UploadedFiles()
     files: {
       passport?: Express.Multer.File[];
       governmentId?: Express.Multer.File[];
     },
   ) {
-    return this.onboardingService.uploadPrivateClientDocuments(userId, files);
+    return this.onboardingService.uploadPrivateClientDocuments(
+      body.email,
+      files,
+    );
   }
 
   @Post('documents/operator')
-  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor(
       [
@@ -139,7 +122,7 @@ export class OnboardingController {
     ),
   )
   uploadOperatorDocs(
-    @CurrentUser('userId') userId: string,
+    @Body() body: OnboardingDocumentUploadDto,
     @UploadedFiles()
     files: {
       aocCertificate?: Express.Multer.File[];
@@ -147,11 +130,10 @@ export class OnboardingController {
       businessLicense?: Express.Multer.File[];
     },
   ) {
-    return this.onboardingService.uploadOperatorDocuments(userId, files);
+    return this.onboardingService.uploadOperatorDocuments(body.email, files);
   }
 
   @Post('documents/pilot')
-  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor(
       [
@@ -163,7 +145,7 @@ export class OnboardingController {
     ),
   )
   uploadPilotDocs(
-    @CurrentUser('userId') userId: string,
+    @Body() body: OnboardingDocumentUploadDto,
     @UploadedFiles()
     files: {
       pilotLicenseFront?: Express.Multer.File[];
@@ -171,11 +153,10 @@ export class OnboardingController {
       medicalCertificate?: Express.Multer.File[];
     },
   ) {
-    return this.onboardingService.uploadPilotDocuments(userId, files);
+    return this.onboardingService.uploadPilotDocuments(body.email, files);
   }
 
   @Post('documents/engineer-crew')
-  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor(
       [
@@ -186,18 +167,20 @@ export class OnboardingController {
     ),
   )
   uploadEngineerCrewDocs(
-    @CurrentUser('userId') userId: string,
+    @Body() body: OnboardingDocumentUploadDto,
     @UploadedFiles()
     files: {
       professionalLicense?: Express.Multer.File[];
       backgroundCheck?: Express.Multer.File[];
     },
   ) {
-    return this.onboardingService.uploadEngineerCrewDocuments(userId, files);
+    return this.onboardingService.uploadEngineerCrewDocuments(
+      body.email,
+      files,
+    );
   }
 
   @Post('documents/hbu-partner')
-  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor(
       [
@@ -208,14 +191,17 @@ export class OnboardingController {
     ),
   )
   uploadHbuPartnerDocs(
-    @CurrentUser('userId') userId: string,
+    @Body() body: OnboardingDocumentUploadDto,
     @UploadedFiles()
     files: {
       businessRegistration?: Express.Multer.File[];
       facilityOrServiceCertificate?: Express.Multer.File[];
     },
   ) {
-    return this.onboardingService.uploadHbuPartnerDocuments(userId, files);
+    return this.onboardingService.uploadHbuPartnerDocuments(
+      body.email,
+      files,
+    );
   }
 
   @Post('documents/skip')
