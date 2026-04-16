@@ -184,8 +184,8 @@ export class OnboardingController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [
-        { name: 'businessRegistration', maxCount: 1 },
-        { name: 'facilityOrServiceCertificate', maxCount: 1 },
+        { name: 'businessLicense', maxCount: 1 },
+        { name: 'insurancePolicy', maxCount: 1 },
       ],
       { limits: { fileSize: 10 * 1024 * 1024 } },
     ),
@@ -194,8 +194,8 @@ export class OnboardingController {
     @Body() body: OnboardingDocumentUploadDto,
     @UploadedFiles()
     files: {
-      businessRegistration?: Express.Multer.File[];
-      facilityOrServiceCertificate?: Express.Multer.File[];
+      businessLicense?: Express.Multer.File[];
+      insurancePolicy?: Express.Multer.File[];
     },
   ) {
     return this.onboardingService.uploadHbuPartnerDocuments(

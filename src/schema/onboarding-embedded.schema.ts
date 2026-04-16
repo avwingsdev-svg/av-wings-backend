@@ -98,8 +98,8 @@ export const HbuPartnerProfileSchema = SchemaFactory.createForClass(
 
 @Schema({ _id: false })
 export class HbuPartnerDocumentData {
-  @Prop() businessRegistrationKey?: string;
-  @Prop() facilityOrServiceCertificateKey?: string;
+  @Prop() businessLicenseKey?: string;
+  @Prop() insurancePolicyKey?: string;
 }
 
 export const HbuPartnerDocumentSchema = SchemaFactory.createForClass(

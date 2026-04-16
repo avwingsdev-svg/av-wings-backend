@@ -186,9 +186,8 @@ export class OnboardingService {
         {
           $set: {
             hbuPartnerProfile: {
-              businessName: dto.businessName.trim(),
-              airportIcaoOrIata: dto.airportIcaoOrIata.trim(),
-              servicesDescription: dto.servicesDescription.trim(),
+              companyName: dto.companyName.trim(),
+              HBU: dto.HBU.trim(),
             },
           },
         },
@@ -364,8 +363,8 @@ export class OnboardingService {
   async uploadHbuPartnerDocuments(
     email: string,
     files: {
-      businessRegistration?: Express.Multer.File[];
-      facilityOrServiceCertificate?: Express.Multer.File[];
+      businessLicense?: Express.Multer.File[];
+      insurancePolicy?: Express.Multer.File[];
     },
   ) {
     const user = await this.requireUserByEmail(email);
@@ -373,20 +372,20 @@ export class OnboardingService {
     const storageId = user._id.toString();
     this.clearDocumentsSkip(user);
     user.hbuPartnerDocuments = user.hbuPartnerDocuments ?? {};
-    if (files.businessRegistration?.[0]) {
-      user.hbuPartnerDocuments.businessRegistrationKey =
+    if (files.businessLicense?.[0]) {
+      user.hbuPartnerDocuments.businessLicenseKey =
         await this.storeDocument(
           storageId,
-          'businessRegistration',
-          files.businessRegistration[0],
+          'businessLicense',
+          files.businessLicense[0],
         );
     }
-    if (files.facilityOrServiceCertificate?.[0]) {
-      user.hbuPartnerDocuments.facilityOrServiceCertificateKey =
+    if (files.insurancePolicy?.[0]) {
+      user.hbuPartnerDocuments.insurancePolicyKey =
         await this.storeDocument(
           storageId,
-          'facilityOrServiceCertificate',
-          files.facilityOrServiceCertificate[0],
+          'insurancePolicy',
+          files.insurancePolicy[0],
         );
     }
     await user.save();

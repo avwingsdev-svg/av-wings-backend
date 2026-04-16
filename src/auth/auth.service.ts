@@ -307,7 +307,7 @@ export class AuthService {
   }
 
   async getCurrentUser(userId: string): Promise<Partial<User>> {
-    const user = await this.userModel.findById(userId).select('-password').exec();
+    const user = await this.userModel.findById(userId).select('-password -refreshToken').exec();
     if (!user) {
       throw new NotFoundException('User not found.');
     }
@@ -402,5 +402,24 @@ export class AuthService {
       accountType: created.accountType,
       isEmailVerified: created.isEmailVerified,
     }
+  }
+
+
+  async updateProfile(userId: string, dto: Partial<SignupDto>): Promise<{ message: string }> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+    if (dto.fullName !== undefined) {
+      user.fullName = dto.fullName.trim();
+    }
+    if (dto.phoneNumber !== undefined) {
+      user.phoneNumber = dto.phoneNumber.trim();
+    }
+    await user.save();
+    await this.onboardingService.syncOnboardingCompletionFlagsForUserId(
+      user._id.toString(),
+    );
+    return { message: 'Profile updated successfully.' };
   }
 }
