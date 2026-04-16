@@ -89,9 +89,8 @@ export function getMissingProfileFields(user: User): string[] {
     case UserAccountType.HBU_PARTNER: {
       const p = user.hbuPartnerProfile;
       const m: string[] = [];
-      if (!p?.businessName?.trim()) m.push('businessName');
-      if (!p?.airportIcaoOrIata?.trim()) m.push('airportIcaoOrIata');
-      if (!p?.servicesDescription?.trim()) m.push('servicesDescription');
+      if (!p?.businessName?.trim()) m.push('companyName');
+      if (!p?.airportIcaoOrIata?.trim()) m.push('HBU');
       return m;
     }
     default:
@@ -139,9 +138,9 @@ export function getMissingDocumentKeys(user: User): string[] {
     case UserAccountType.HBU_PARTNER: {
       const d = user.hbuPartnerDocuments;
       const m: string[] = [];
-      if (!d?.businessRegistrationKey) m.push('businessRegistration');
-      if (!d?.facilityOrServiceCertificateKey) {
-        m.push('facilityOrServiceCertificate');
+      if (!d?.businessLicenseKey) m.push('businessLicense');
+      if (!d?.insurancePolicyKey) {
+        m.push('insurancePolicy');
       }
       return m;
     }

@@ -15,6 +15,7 @@ import { User, UserAccountType } from '../schema/User.schema';
 import { OtpService } from '../otp/otp.service';
 import { MailService } from '../mail/mail.service';
 import { SignupDto } from './dto/signup.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { SignupVerifyDto } from './dto/signup-verify.dto';
 import { EmailBodyDto } from './dto/email-body.dto';
@@ -405,7 +406,7 @@ export class AuthService {
   }
 
 
-  async updateProfile(userId: string, dto: Partial<SignupDto>): Promise<{ message: string }> {
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<{ message: string }> {
     const user = await this.userModel.findById(userId).exec();
     if (!user) {
       throw new NotFoundException('User not found.');
@@ -415,6 +416,9 @@ export class AuthService {
     }
     if (dto.phoneNumber !== undefined) {
       user.phoneNumber = dto.phoneNumber.trim();
+    }
+    if (dto.avatarImage !== undefined) {
+      user.avatarImage = dto.avatarImage.trim() || 'default-avatar.png';
     }
     await user.save();
     await this.onboardingService.syncOnboardingCompletionFlagsForUserId(
