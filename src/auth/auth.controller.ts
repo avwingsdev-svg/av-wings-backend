@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
@@ -91,11 +101,15 @@ export class AuthController {
 
   @Patch('profile')
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('avatar', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
   updateProfile(
     @CurrentUser('userId') userId: string,
     @Body() dto: UpdateProfileDto,
+    @UploadedFile() avatar?: Express.Multer.File,
   ) {
-    return this.authService.updateProfile(userId, dto);
+    return this.authService.updateProfile(userId, dto, avatar);
   }
 
   @Post('google')

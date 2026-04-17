@@ -406,19 +406,37 @@ export class AuthService {
   }
 
 
-  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<{ message: string }> {
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+    avatar?: Express.Multer.File,
+  ): Promise<{ message: string }> {
     const user = await this.userModel.findById(userId).exec();
     if (!user) {
       throw new NotFoundException('User not found.');
     }
+    let updated = false;
     if (dto.fullName !== undefined) {
       user.fullName = dto.fullName.trim();
+      updated = true;
     }
     if (dto.phoneNumber !== undefined) {
       user.phoneNumber = dto.phoneNumber.trim();
+      updated = true;
     }
     if (dto.avatarImage !== undefined) {
       user.avatarImage = dto.avatarImage.trim() || 'default-avatar.png';
+      updated = true;
+    }
+    if (avatar) {
+      const uploaded = await this.onboardingService.uploadAvatar(userId, avatar);
+      user.avatarImage = uploaded.profileAvatarUrl;
+      updated = true;
+    }
+    if (!updated) {
+      throw new BadRequestException(
+        'No updatable fields were provided. Send fullName, phoneNumber, avatarImage, or avatar file.',
+      );
     }
     await user.save();
     await this.onboardingService.syncOnboardingCompletionFlagsForUserId(
