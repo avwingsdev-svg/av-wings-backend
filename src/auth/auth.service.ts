@@ -76,7 +76,16 @@ export class AuthService {
   }
 
 
-  async verifySignup(dto: SignupVerifyDto): Promise<{ message: string }> {
+  async verifySignup(dto: SignupVerifyDto): Promise<{ 
+    accessToken: string;
+    refreshToken: string;
+    expiresIn: string;
+    email: string;
+    accountType?: UserAccountType;
+    isEmailVerified: boolean;
+    profileDetailsComplete: boolean;
+    documentsComplete: boolean;
+   }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
     if (!user) {
@@ -90,7 +99,15 @@ export class AuthService {
     user.isEmailVerified = true;
     await user.save();
 
-    return { message: 'Email verified. You can set your password when ready.' };
+    // return { message: 'Email verified. You can set your password when ready.' };
+        return {
+      ...await this.issueTokens(user),
+      email: user.email,
+      accountType: user.accountType,
+      isEmailVerified: user.isEmailVerified,
+      profileDetailsComplete: computeProfileDetailsComplete(user),
+      documentsComplete: computeDocumentsComplete(user),
+    };
   }
 
 

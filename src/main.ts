@@ -8,7 +8,9 @@ async function bootstrap() {
   app.enableCors({
     origin: corsOrigin
       ? corsOrigin.split(',').map((o) => o.trim()).filter(Boolean)
-      : true,
+      : ["https://mobile.avwings.com"],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
   app.useGlobalPipes(
