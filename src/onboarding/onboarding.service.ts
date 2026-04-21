@@ -319,15 +319,12 @@ export class OnboardingService {
       insurancePolicy?: Express.Multer.File[];
     },
   ) {
-    console.log('uploadHbuPartnerDocuments', { userId, files });
     const hasUploadedFiles =
       files?.businessLicense?.length || files?.insurancePolicy?.length;
-      console.log('hasUploadedFiles', hasUploadedFiles);
     if (!hasUploadedFiles) {
       throw new BadRequestException('No files uploaded');
     }
     const user = await this.requireUser(userId);
-    console.log('user', user);
     this.assertAccountType(user, UserAccountType.HBU_PARTNER);
     const storageId = user._id.toString();
     this.clearDocumentsSkip(user);
@@ -442,14 +439,6 @@ export class OnboardingService {
     return user;
   }
 
-  private async requireUserByEmail(rawEmail: string): Promise<User> {
-    const email = rawEmail.trim().toLowerCase();
-    const user = await this.userModel.findOne({ email }).exec();
-    if (!user) {
-      throw new NotFoundException('User not found.');
-    }
-    return user;
-  }
 
   /** Persists `profileDetailsComplete` and `documentsComplete` from the same rules as the onboarding API. */
   private async syncOnboardingCompletionFlags(user: User): Promise<User> {

@@ -232,10 +232,9 @@ export class OnboardingController {
       insurancePolicy?: Express.Multer.File[];
     },
   ) {
-    console.log('Controller received files:', files);
     return this.onboardingService.uploadHbuPartnerDocuments(
       userId,
-      files || {},
+      files,
     );
   }
 
