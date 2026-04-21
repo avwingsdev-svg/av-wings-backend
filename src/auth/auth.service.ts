@@ -206,10 +206,11 @@ export class AuthService {
 
 
   async chooseAccountType(
+    userId: string,
     dto: ChooseAccountTypeDto,
   ): Promise<{ message: string; accountType: UserAccountType }> {
-    const email = dto.email.trim().toLowerCase();
-    const user = await this.userModel.findOne({ email }).exec();
+    const user = await this.userModel.findById(userId).exec();
+    console.log('chooseAccountType', { userId, dto, user });
     if (!user) {
       throw new NotFoundException('User not found.');
     }

@@ -16,13 +16,18 @@ import {
   getMissingDocumentKeys,
   getMissingProfileFields,
 } from './onboarding-validation';
-import {
-  EngineerCrewProfilePostDto,
-  HbuPartnerProfilePostDto,
-  OperatorProfilePostDto,
-  PilotProfilePostDto,
-  PrivateClientProfilePostDto,
-} from './dto/onboarding-profile-post.dto';
+import { PrivateClientProfileDto } from './dto/private-client-profile.dto';
+import { OperatorProfileDto } from './dto/operator-profile.dto';
+import { PilotProfileDto } from './dto/pilot-profile.dto';
+import { EngineerCrewProfileDto } from './dto/engineer-crew-profile.dto';
+import { HbuPartnerProfileDto } from './dto/hbu-partner-profile.dto';
+// import {
+//   EngineerCrewProfilePostDto,
+//   HbuPartnerProfilePostDto,
+//   OperatorProfilePostDto,
+//   PilotProfilePostDto,
+//   PrivateClientProfilePostDto,
+// } from './dto/onboarding-profile-post.dto';
 
 
 @Injectable()
@@ -63,141 +68,76 @@ export class OnboardingService {
   }
 
   // Writes private-client/broker profile slice; lookup by email in body; findOneAndUpdate on User.
-  async updatePrivateClientProfile(dto: PrivateClientProfilePostDto) {
-    const email = dto.email.trim().toLowerCase();
-    const user = await this.userModel
-      .findOneAndUpdate(
-        {
-          email,
-          accountType: UserAccountType.PRIVATE_CLIENT_BROKER,
-        },
-        {
-          $set: {
-            privateClientProfile: {
-              homeAddress: dto.homeAddress.trim(),
-              dateOfBirth: new Date(dto.dateOfBirth),
-              passportNumber: dto.passportNumber.trim(),
-              preferredAirport: dto.preferredAirport.trim(),
-            },
-          },
-        },
-        { new: true, runValidators: true },
-      )
-      .exec();
-    if (!user) {
-      await this.throwIfProfileUpdateBlocked(email);
-    }
-    const synced = await this.syncOnboardingCompletionFlags(user!);
+  async updatePrivateClientProfile( userId: string, dto: PrivateClientProfileDto) {
+    // const email = dto.email.trim().toLowerCase();
+    const user = await this.requireUser(userId);
+    this.assertAccountType(user, UserAccountType.PRIVATE_CLIENT_BROKER);
+    user.privateClientProfile = {
+      homeAddress: dto.homeAddress.trim(),
+      dateOfBirth: new Date(dto.dateOfBirth),
+      passportNumber: dto.passportNumber.trim(),
+      preferredAirport: dto.preferredAirport.trim(),
+    };
+    await user.save();
+    const synced = await this.syncOnboardingCompletionFlags(user);
     return { message: 'Profile saved.', ...buildOnboardingStatus(synced) };
   }
 
-  async updateOperatorProfile(dto: OperatorProfilePostDto) {
-    const email = dto.email.trim().toLowerCase();
-    const user = await this.userModel
-      .findOneAndUpdate(
-        {
-          email,
-          accountType: UserAccountType.OPERATOR,
-        },
-        {
-          $set: {
-            operatorProfile: {
-              companyName: dto.companyName.trim(),
-              businessAddress: dto.businessAddress.trim(),
-              aocNumber: dto.aocNumber.trim(),
-              primaryBaseIcao: dto.primaryBaseIcao.trim(),
-            },
-          },
-        },
-        { new: true, runValidators: true },
-      )
-      .exec();
-    if (!user) {
-      await this.throwIfProfileUpdateBlocked(email);
-    }
-    const synced = await this.syncOnboardingCompletionFlags(user!);
+  async updateOperatorProfile(userId: string, dto: OperatorProfileDto) {
+    // const email = dto.email.trim().toLowerCase();
+    const user = await this.requireUser(userId);
+    this.assertAccountType(user, UserAccountType.OPERATOR);
+    user.operatorProfile = {
+      companyName: dto.companyName.trim(),
+      businessAddress: dto.businessAddress.trim(),
+      aocNumber: dto.aocNumber.trim(),
+      primaryBaseIcao: dto.primaryBaseIcao.trim(),
+    };
+    await user.save();
+    const synced = await this.syncOnboardingCompletionFlags(user);
     return { message: 'Profile saved.', ...buildOnboardingStatus(synced) };
   }
 
-  async updatePilotProfile(dto: PilotProfilePostDto) {
-    const email = dto.email.trim().toLowerCase();
-    const user = await this.userModel
-      .findOneAndUpdate(
-        {
-          email,
-          accountType: UserAccountType.PILOT,
-        },
-        {
-          $set: {
-            pilotProfile: {
-              licenseNumber: dto.licenseNumber.trim(),
-              totalFlightHours: dto.totalFlightHours,
-              medicalClass: dto.medicalClass.trim(),
-              typeRatings: dto.typeRatings.trim(),
-            },
-          },
-        },
-        { new: true, runValidators: true },
-      )
-      .exec();
-    if (!user) {
-      await this.throwIfProfileUpdateBlocked(email);
-    }
-    const synced = await this.syncOnboardingCompletionFlags(user!);
+  async updatePilotProfile(userId: string, dto: PilotProfileDto) {
+    // const email = dto.email.trim().toLowerCase();
+    const user = await this.requireUser(userId);
+    this.assertAccountType(user, UserAccountType.PILOT);
+    user.pilotProfile = {
+      licenseNumber: dto.licenseNumber.trim(),
+      totalFlightHours: dto.totalFlightHours,
+      medicalClass: dto.medicalClass.trim(),
+      typeRatings: dto.typeRatings.trim(),
+    };
+    await user.save();
+    const synced = await this.syncOnboardingCompletionFlags(user);
     return { message: 'Profile saved.', ...buildOnboardingStatus(synced) };
   }
 
-  async updateEngineerCrewProfile(dto: EngineerCrewProfilePostDto) {
-    const email = dto.email.trim().toLowerCase();
-    const user = await this.userModel
-      .findOneAndUpdate(
-        {
-          email,
-          accountType: UserAccountType.ENGINEER_CREW,
-        },
-        {
-          $set: {
-            engineerCrewProfile: {
-              specialty: dto.specialty.trim(),
-              yearsOfExperience: dto.yearsOfExperience,
-              licenseCertificationId: dto.licenseCertificationId.trim(),
-              languagesSpoken: dto.languagesSpoken.trim(),
-            },
-          },
-        },
-        { new: true, runValidators: true },
-      )
-      .exec();
-    if (!user) {
-      await this.throwIfProfileUpdateBlocked(email);
-    }
-    const synced = await this.syncOnboardingCompletionFlags(user!);
+  async updateEngineerCrewProfile(userId: string, dto: EngineerCrewProfileDto) {
+    // const email = dto.email.trim().toLowerCase();
+    const user = await this.requireUser(userId);
+    this.assertAccountType(user, UserAccountType.ENGINEER_CREW);
+    user.engineerCrewProfile = {
+      specialty: dto.specialty.trim(),
+      yearsOfExperience: dto.yearsOfExperience,
+      licenseCertificationId: dto.licenseCertificationId.trim(),
+      languagesSpoken: dto.languagesSpoken.trim(),
+    };
+    await user.save();
+    const synced = await this.syncOnboardingCompletionFlags(user);
     return { message: 'Profile saved.', ...buildOnboardingStatus(synced) };
   }
 
-  async updateHbuPartnerProfile(dto: HbuPartnerProfilePostDto) {
-    const email = dto.email.trim().toLowerCase();
-    const user = await this.userModel
-      .findOneAndUpdate(
-        {
-          email,
-          accountType: UserAccountType.HBU_PARTNER,
-        },
-        {
-          $set: {
-            hbuPartnerProfile: {
-              companyName: dto.companyName.trim(),
-              HBU: dto.HBU.trim(),
-            },
-          },
-        },
-        { new: true, runValidators: true },
-      )
-      .exec();
-    if (!user) {
-      await this.throwIfProfileUpdateBlocked(email);
-    }
-    const synced = await this.syncOnboardingCompletionFlags(user!);
+  async updateHbuPartnerProfile(userId: string, dto: HbuPartnerProfileDto) {
+    // const email = dto.email.trim().toLowerCase();
+    const user = await this.requireUser(userId);
+    this.assertAccountType(user, UserAccountType.HBU_PARTNER);
+    user.hbuPartnerProfile = {
+      businessName: dto.companyName.trim(),
+      airportIcaoOrIata: dto.HBU.trim(),
+    };
+    await user.save();
+    const synced = await this.syncOnboardingCompletionFlags(user);
     return { message: 'Profile saved.', ...buildOnboardingStatus(synced) };
   }
 
@@ -216,13 +156,16 @@ export class OnboardingService {
 
 // Document uploads for each account type; later evidence clears any earlier “skip” decision.
   async uploadPrivateClientDocuments(
-    email: string,
-    files: {
+    userId: string,
+    files?: {
       passport?: Express.Multer.File[];
       governmentId?: Express.Multer.File[];
     },
   ) {
-    const user = await this.requireUserByEmail(email);
+    if (!files) {
+      throw new BadRequestException('No files uploaded');
+    }
+    const user = await this.requireUser(userId);
     this.assertAccountType(user, UserAccountType.PRIVATE_CLIENT_BROKER);
     const storageId = user._id.toString();
     this.clearDocumentsSkip(user);
@@ -248,14 +191,17 @@ export class OnboardingService {
 
   // Operator AOC, insurance, and business license evidence.
   async uploadOperatorDocuments(
-    email: string,
-    files: {
+    userId: string,
+    files?: {
       aocCertificate?: Express.Multer.File[];
       insurancePolicy?: Express.Multer.File[];
       businessLicense?: Express.Multer.File[];
     },
   ) {
-    const user = await this.requireUserByEmail(email);
+    if (!files) {
+      throw new BadRequestException('No files uploaded');
+    }
+    const user = await this.requireUser(userId);
     this.assertAccountType(user, UserAccountType.OPERATOR);
     const storageId = user._id.toString();
     this.clearDocumentsSkip(user);
@@ -288,14 +234,17 @@ export class OnboardingService {
 
   // Pilot license (front/back) and medical certificate.
   async uploadPilotDocuments(
-    email: string,
-    files: {
+    userId: string,
+    files?: {
       pilotLicenseFront?: Express.Multer.File[];
       pilotLicenseBack?: Express.Multer.File[];
       medicalCertificate?: Express.Multer.File[];
     },
   ) {
-    const user = await this.requireUserByEmail(email);
+    if (!files) {
+      throw new BadRequestException('No files uploaded');
+    }
+    const user = await this.requireUser(userId);
     this.assertAccountType(user, UserAccountType.PILOT);
     const storageId = user._id.toString();
     this.clearDocumentsSkip(user);
@@ -328,13 +277,16 @@ export class OnboardingService {
 
   // Engineer/crew professional license and background check.
   async uploadEngineerCrewDocuments(
-    email: string,
-    files: {
+    userId: string,
+    files?: {
       professionalLicense?: Express.Multer.File[];
       backgroundCheck?: Express.Multer.File[];
     },
   ) {
-    const user = await this.requireUserByEmail(email);
+    if (!files) {
+      throw new BadRequestException('No files uploaded');
+    }
+    const user = await this.requireUser(userId);
     this.assertAccountType(user, UserAccountType.ENGINEER_CREW);
     const storageId = user._id.toString();
     this.clearDocumentsSkip(user);
@@ -361,13 +313,21 @@ export class OnboardingService {
 
   // HBU partner registration and facility/service certificates.
   async uploadHbuPartnerDocuments(
-    email: string,
-    files: {
+    userId: string,
+    files?: {
       businessLicense?: Express.Multer.File[];
       insurancePolicy?: Express.Multer.File[];
     },
   ) {
-    const user = await this.requireUserByEmail(email);
+    console.log('uploadHbuPartnerDocuments', { userId, files });
+    const hasUploadedFiles =
+      files?.businessLicense?.length || files?.insurancePolicy?.length;
+      console.log('hasUploadedFiles', hasUploadedFiles);
+    if (!hasUploadedFiles) {
+      throw new BadRequestException('No files uploaded');
+    }
+    const user = await this.requireUser(userId);
+    console.log('user', user);
     this.assertAccountType(user, UserAccountType.HBU_PARTNER);
     const storageId = user._id.toString();
     this.clearDocumentsSkip(user);

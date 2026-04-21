@@ -36,8 +36,13 @@ export class AuthController {
   }
 
   @Patch('onboarding/account-type')
-  chooseAccountType(@Body() dto: ChooseAccountTypeDto) {
-    return this.authService.chooseAccountType(dto);
+  @UseGuards(JwtAuthGuard)
+  chooseAccountType(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: ChooseAccountTypeDto,
+  ) {
+    console.log('chooseAccountType endpoint', { userId, dto });
+    return this.authService.chooseAccountType(userId, dto);
   }
 
   @Post('signup')
