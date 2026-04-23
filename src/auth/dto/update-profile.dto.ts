@@ -1,3 +1,5 @@
+// 
+
 import { Type } from 'class-transformer';
 import {
   IsDateString,
@@ -9,88 +11,10 @@ import {
   MinLength,
 } from 'class-validator';
 
-/** Partial update of account-level profile fields (authenticated user). */
-
-export class OperatorProfileDto {
-  @IsString()
-  @MinLength(1)
-  @IsOptional()
-  companyName?: string;
-
-  @IsString()
-  @MinLength(1)
-  @IsOptional()
-  businessAddress?: string;
-
-  @IsString()
-  @MinLength(1)
-  @IsOptional()
-  aocNumber?: string;
-
-  @IsString()
-  @MinLength(1)
-  @IsOptional()
-  primaryBaseIcao?: string;
-}
-
-export class HbuPartnerProfileDto {
-  @IsString()
-  @MinLength(1)
-  @IsOptional()
-  companyName?: string;
-
-  @IsString()
-  @MinLength(1)
-  @IsOptional()
-  HBU?: string;
-}
-
-export class EngineerCrewProfileDto {
-  @IsString()
-  @MinLength(1)
-  @IsOptional()
-  specialty?: string;
-
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(80)
-  @IsOptional()
-  yearsOfExperience?: number;
-
-  @IsString()
-  @MinLength(1)
-  @IsOptional()
-  licenseCertificationId?: string;
-
-  @IsString()
-  @MinLength(1)
-  @IsOptional()
-  languagesSpoken?: string;
-}
-
-export class PrivateClientProfileDto {
-  @IsString()
-  @MinLength(1)
-  @IsOptional()
-  homeAddress?: string;
-
-  @IsDateString()
-  @IsOptional()
-  dateOfBirth?: string;
-
-  @IsString()
-  @MinLength(1)
-  @IsOptional()
-  passportNumber?: string;
-
-  @IsString()
-  @MinLength(1)
-  @IsOptional()
-  preferredAirport?: string;
-}
-
 export class UpdateProfileDto {
+  // -------------------------
+  // BASIC USER FIELDS
+  // -------------------------
   @IsOptional()
   @IsString()
   @MinLength(1)
@@ -105,20 +29,74 @@ export class UpdateProfileDto {
   @IsString()
   avatarImage?: string;
 
-  // Account-type-specific fields (only update if user has that account type)
+  // -------------------------
+  // PRIVATE CLIENT FIELDS
+  // -------------------------
   @IsOptional()
-  @Type(() => OperatorProfileDto)
-  OperatorProfileDto?: OperatorProfileDto;
+  @IsString()
+  homeAddress?: string;
 
   @IsOptional()
-  @Type(() => PrivateClientProfileDto)
-  PrivateClientProfileDto?: PrivateClientProfileDto;
+  @IsDateString()
+  dateOfBirth?: string;
 
   @IsOptional()
-  @Type(() => HbuPartnerProfileDto)
-  HbuPartnerProfileDto?: HbuPartnerProfileDto;
+  @IsString()
+  passportNumber?: string;
 
   @IsOptional()
-  @Type(() => EngineerCrewProfileDto)
-  EngineerCrewProfileDto?: EngineerCrewProfileDto;
+  @IsString()
+  preferredAirport?: string;
+
+  // -------------------------
+  // OPERATOR FIELDS
+  // -------------------------
+  @IsOptional()
+  @IsString()
+  companyName?: string;
+
+  @IsOptional()
+  @IsString()
+  businessAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  aocNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  primaryBaseIcao?: string;
+
+  // -------------------------
+  // ENGINEER CREW FIELDS
+  // -------------------------
+  @IsOptional()
+  @IsString()
+  specialty?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(80)
+  yearsOfExperience?: number;
+
+  @IsOptional()
+  @IsString()
+  licenseCertificationId?: string;
+
+  @IsOptional()
+  @IsString()
+  languagesSpoken?: string;
+
+  // -------------------------
+  // HBU PARTNER FIELDS
+  // -------------------------
+  @IsOptional()
+  @IsString()
+  hbuCompanyName?: string;
+
+  @IsOptional()
+  @IsString()
+  HBU?: string;
 }

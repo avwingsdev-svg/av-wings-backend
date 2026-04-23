@@ -422,22 +422,28 @@ export class AuthService {
     avatar?: Express.Multer.File,
   ): Promise<{ message: string }> {
     const user = await this.userModel.findById(userId).exec();
+
     if (!user) {
       throw new NotFoundException('User not found.');
     }
+
     let updated = false;
+
     if (dto.fullName !== undefined) {
       user.fullName = dto.fullName.trim();
       updated = true;
     }
+
     if (dto.phoneNumber !== undefined) {
       user.phoneNumber = dto.phoneNumber.trim();
       updated = true;
     }
+
     if (dto.avatarImage !== undefined) {
-      user.avatarImage = dto.avatarImage.trim() || 'default-avatar.png';
+      user.avatarImage = dto.avatarImage?.trim() || 'default-avatar.png';
       updated = true;
     }
+
     if (avatar) {
       const uploaded = await this.onboardingService.uploadAvatar(
         userId,
@@ -446,75 +452,156 @@ export class AuthService {
       user.avatarImage = uploaded.profileAvatarUrl;
       updated = true;
     }
-if (dto.OperatorProfileDto) {
-  if (user.accountType !== UserAccountType.OPERATOR) {
-    throw new BadRequestException(
-      "Operator profile data is not allowed for this account type",
-    );
-  }
 
-  user.operatorProfile = {
-    companyName: dto.OperatorProfileDto.companyName?.trim(),
-    businessAddress: dto.OperatorProfileDto.businessAddress?.trim(),
-    aocNumber: dto.OperatorProfileDto.aocNumber?.trim(),
-    primaryBaseIcao: dto.OperatorProfileDto.primaryBaseIcao?.trim(),
-  };
+    if (user.accountType === UserAccountType.PRIVATE_CLIENT_BROKER) {
+      const profile: Record<string, any> = user.privateClientProfile || {};
 
-  updated = true;
-}
+      if (dto.homeAddress !== undefined) {
+        profile.homeAddress = dto.homeAddress.trim();
+        updated = true;
+      }
+
+      if (dto.passportNumber !== undefined) {
+        profile.passportNumber = dto.passportNumber.trim();
+        updated = true;
+      }
+
+      if (dto.preferredAirport !== undefined) {
+        profile.preferredAirport = dto.preferredAirport.trim();
+        updated = true;
+      }
+
+      if (dto.dateOfBirth !== undefined) {
+        profile.dateOfBirth = new Date(dto.dateOfBirth);
+        updated = true;
+      }
+
+      user.privateClientProfile = profile;
+    }
 
     if (
-      dto.PrivateClientProfileDto
+      (dto.homeAddress ||
+        dto.passportNumber ||
+        dto.preferredAirport ||
+        dto.dateOfBirth) &&
+      user.accountType !== UserAccountType.PRIVATE_CLIENT_BROKER
     ) {
-      if(user.accountType !== UserAccountType.PRIVATE_CLIENT_BROKER) {
-        throw new BadRequestException(
-          "Private client profile data is not allowed for this account type",
-        );
-      }
-      user.privateClientProfile = {
-        homeAddress: dto.PrivateClientProfileDto.homeAddress?.trim(),
-        passportNumber: dto.PrivateClientProfileDto.passportNumber?.trim(),
-        preferredAirport: dto.PrivateClientProfileDto.preferredAirport?.trim(),
-      };
-      updated = true;
-    }
-    if (
-      dto.EngineerCrewProfileDto 
-    ) {
-      if(user.accountType !== UserAccountType.ENGINEER_CREW) {
-        throw new BadRequestException(
-          "Engineer crew profile data is not allowed for this account type",
-        );
-      }
-      user.engineerCrewProfile = {
-        specialty: dto.EngineerCrewProfileDto.specialty?.trim(),
-        yearsOfExperience: dto.EngineerCrewProfileDto.yearsOfExperience,
-        licenseCertificationId: dto.EngineerCrewProfileDto.licenseCertificationId?.trim(),
-        languagesSpoken: dto.EngineerCrewProfileDto.languagesSpoken?.trim(),
-      };
-      updated = true;
-    }
-    if (
-      dto.HbuPartnerProfileDto
-    ) {
-      if(user.accountType !== UserAccountType.HBU_PARTNER){
-        throw new BadRequestException("HBU profile data is not allowed for this account type")
-      }
-      user.hbuPartnerProfile = {
-        companyName: dto.HbuPartnerProfileDto.companyName?.trim(),
-        HBU: dto.HbuPartnerProfileDto.HBU?.trim(),
-      };
-      updated = true;
-    }
-    if (!updated) {
       throw new BadRequestException(
-        'No updatable fields were provided. Send fullName, phoneNumber, avatarImage, or avatar file.',
+        'Private client profile data is not allowed for this account type',
       );
     }
+
+    if (user.accountType === UserAccountType.OPERATOR) {
+      const profile: Record<string, any> = user.operatorProfile || {};
+
+      if (dto.companyName !== undefined) {
+        profile.companyName = dto.companyName.trim();
+        updated = true;
+      }
+
+      if (dto.businessAddress !== undefined) {
+        profile.businessAddress = dto.businessAddress.trim();
+        updated = true;
+      }
+
+      if (dto.aocNumber !== undefined) {
+        profile.aocNumber = dto.aocNumber.trim();
+        updated = true;
+      }
+
+      if (dto.primaryBaseIcao !== undefined) {
+        profile.primaryBaseIcao = dto.primaryBaseIcao.trim();
+        updated = true;
+      }
+
+      user.operatorProfile = profile;
+    }
+
+    if (
+      (dto.companyName ||
+        dto.businessAddress ||
+        dto.aocNumber ||
+        dto.primaryBaseIcao) &&
+      user.accountType !== UserAccountType.OPERATOR
+    ) {
+      throw new BadRequestException(
+        'Operator profile data is not allowed for this account type',
+      );
+    }
+
+    if (user.accountType === UserAccountType.ENGINEER_CREW) {
+      const profile: Record<string, any> = user.engineerCrewProfile || {};
+
+      if (dto.specialty !== undefined) {
+        profile.specialty = dto.specialty.trim();
+        updated = true;
+      }
+
+      if (dto.yearsOfExperience !== undefined) {
+        profile.yearsOfExperience = dto.yearsOfExperience;
+        updated = true;
+      }
+
+      if (dto.licenseCertificationId !== undefined) {
+        profile.licenseCertificationId = dto.licenseCertificationId.trim();
+        updated = true;
+      }
+
+      if (dto.languagesSpoken !== undefined) {
+        profile.languagesSpoken = dto.languagesSpoken.trim();
+        updated = true;
+      }
+
+      user.engineerCrewProfile = profile;
+    }
+
+    if (
+      (dto.specialty ||
+        dto.yearsOfExperience !== undefined ||
+        dto.licenseCertificationId ||
+        dto.languagesSpoken) &&
+      user.accountType !== UserAccountType.ENGINEER_CREW
+    ) {
+      throw new BadRequestException(
+        'Engineer crew profile data is not allowed for this account type',
+      );
+    }
+
+    if (user.accountType === UserAccountType.HBU_PARTNER) {
+      const profile: Record<string, any> = user.hbuPartnerProfile || {};
+
+      if (dto.hbuCompanyName !== undefined) {
+        profile.companyName = dto.hbuCompanyName.trim();
+        updated = true;
+      }
+
+      if (dto.HBU !== undefined) {
+        profile.HBU = dto.HBU.trim();
+        updated = true;
+      }
+
+      user.hbuPartnerProfile = profile;
+    }
+
+    if (
+      (dto.hbuCompanyName || dto.HBU) &&
+      user.accountType !== UserAccountType.HBU_PARTNER
+    ) {
+      throw new BadRequestException(
+        'HBU partner profile data is not allowed for this account type',
+      );
+    }
+
+    if (!updated) {
+      throw new BadRequestException('No valid fields provided for update.');
+    }
+
     await user.save();
+
     await this.onboardingService.syncOnboardingCompletionFlagsForUserId(
       user._id.toString(),
     );
+
     return { message: 'Profile updated successfully.' };
   }
 }
