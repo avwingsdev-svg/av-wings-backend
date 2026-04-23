@@ -133,8 +133,8 @@ export class OnboardingService {
     const user = await this.requireUser(userId);
     this.assertAccountType(user, UserAccountType.HBU_PARTNER);
     user.hbuPartnerProfile = {
-      businessName: dto.companyName.trim(),
-      airportIcaoOrIata: dto.HBU.trim(),
+      companyName: dto.companyName.trim(),
+      HBU: dto.HBU.trim(),
     };
     await user.save();
     const synced = await this.syncOnboardingCompletionFlags(user);

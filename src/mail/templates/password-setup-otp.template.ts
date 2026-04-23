@@ -7,7 +7,7 @@ export function passwordSetupOtpEmailContent(
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" /></head>
-<body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
+<body style="font-family: Arial; padding:20px;">
   <p>You requested a code to set your password for ${escapeHtml(appName)}.</p>
   <p>Your verification code is:</p>
   <p style="font-size: 28px; font-weight: 700; letter-spacing: 0.2em;">${escapeHtml(otp)}</p>
@@ -24,3 +24,5 @@ function escapeHtml(s: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+

@@ -36,9 +36,7 @@ import {
   computeProfileDetailsComplete,
 } from '../onboarding/onboarding-validation';
 
-
 const REFRESH_TOKEN_BYTES = 48;
-
 
 @Injectable()
 export class AuthService {
@@ -50,9 +48,9 @@ export class AuthService {
     private readonly onboardingService: OnboardingService,
   ) {}
 
-
   async signup(dto: SignupDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
+    const name = dto.fullName.trim();
     const existing = await this.userModel.findOne({ email }).exec();
     if (existing) {
       throw new ConflictException('Email already registered.');
@@ -70,13 +68,12 @@ export class AuthService {
     });
 
     const otp = await this.otpService.issueOtp(email);
-    await this.mailService.sendSignupOtp(email, otp);
+    await this.mailService.sendSignupOtp(email, otp, name);
 
     return { message: 'Verification code sent to your email.' };
   }
 
-
-  async verifySignup(dto: SignupVerifyDto): Promise<{ 
+  async verifySignup(dto: SignupVerifyDto): Promise<{
     accessToken: string;
     refreshToken: string;
     expiresIn: string;
@@ -85,7 +82,7 @@ export class AuthService {
     isEmailVerified: boolean;
     profileDetailsComplete: boolean;
     documentsComplete: boolean;
-   }> {
+  }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.userModel.findOne({ email }).exec();
     if (!user) {
@@ -100,8 +97,8 @@ export class AuthService {
     await user.save();
 
     // return { message: 'Email verified. You can set your password when ready.' };
-        return {
-      ...await this.issueTokens(user),
+    return {
+      ...(await this.issueTokens(user)),
       email: user.email,
       accountType: user.accountType,
       isEmailVerified: user.isEmailVerified,
@@ -109,7 +106,6 @@ export class AuthService {
       documentsComplete: computeDocumentsComplete(user),
     };
   }
-
 
   async resendSignupOtp(dto: EmailBodyDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
@@ -123,10 +119,9 @@ export class AuthService {
     }
 
     const otp = await this.otpService.issueOtp(email);
-    await this.mailService.sendSignupOtp(email, otp);
+    await this.mailService.sendSignupOtp(email, otp, user.fullName);
     return generic;
   }
-
 
   async login(dto: LoginDto): Promise<{
     accessToken: string;
@@ -146,7 +141,6 @@ export class AuthService {
     }
     if (!user.isEmailVerified) {
       const otp = await this.otpService.issueOtp(email);
-      await this.mailService.sendSignupOtp(email, otp);
       throw new UnauthorizedException(
         'Email not verified. Please check your email to verify with code.',
       );
@@ -162,7 +156,7 @@ export class AuthService {
     );
 
     return {
-      ...await this.issueTokens(user),
+      ...(await this.issueTokens(user)),
       email: user.email,
       accountType: user.accountType,
       isEmailVerified: user.isEmailVerified,
@@ -170,7 +164,6 @@ export class AuthService {
       documentsComplete: computeDocumentsComplete(user),
     };
   }
-
 
   async refresh(dto: RefreshDto): Promise<{
     accessToken: string;
@@ -199,11 +192,9 @@ export class AuthService {
     return { message: 'Logged out.' };
   }
 
-
   getAccountTypes() {
     return { accountTypes: ACCOUNT_TYPE_OPTIONS };
   }
-
 
   async chooseAccountType(
     userId: string,
@@ -224,7 +215,6 @@ export class AuthService {
       accountType: user.accountType,
     };
   }
-
 
   async forgotPassword(dto: EmailBodyDto): Promise<{ message: string }> {
     const email = dto.email.trim().toLowerCase();
@@ -265,7 +255,6 @@ export class AuthService {
 
     return generic;
   }
-
 
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
     const parsed = decodePasswordResetToken(dto.token);
@@ -326,14 +315,16 @@ export class AuthService {
   }
 
   async getCurrentUser(userId: string): Promise<Partial<User>> {
-    const user = await this.userModel.findById(userId).select('-password -refreshToken').exec();
+    const user = await this.userModel
+      .findById(userId)
+      .select('-password -refreshToken')
+      .exec();
     if (!user) {
       throw new NotFoundException('User not found.');
     }
-    return user  
+    return user;
   }
 
- 
   // Google OAuth flow: if email exists with non-Google auth, reject; if email exists with Google auth but different Google ID, reject; otherwise create or update user with Google details and issue tokens. This allows seamless linking of Google accounts to existing users who may have signed up with email/password but haven't set a password yet (e.g. signed up with Google but didn't verify email, so they have no password).
   async googleAuth(dto: GoogleAuthDto): Promise<{
     accessToken: string;
@@ -385,14 +376,16 @@ export class AuthService {
         existingByEmail._id.toString(),
       );
       return {
-        ...await this.issueTokens(existingByEmail),
+        ...(await this.issueTokens(existingByEmail)),
         email: existingByEmail.email,
         accountType: existingByEmail.accountType,
         isEmailVerified: existingByEmail.isEmailVerified,
-      }
+      };
     }
 
-    const existingByGoogleId = await this.userModel.findOne({ googleId }).exec();
+    const existingByGoogleId = await this.userModel
+      .findOne({ googleId })
+      .exec();
     if (existingByGoogleId) {
       throw new ConflictException(
         'This Google account is already linked to another email address.',
@@ -416,13 +409,12 @@ export class AuthService {
     );
 
     return {
-      ...await this.issueTokens(created),
+      ...(await this.issueTokens(created)),
       email: created.email,
       accountType: created.accountType,
       isEmailVerified: created.isEmailVerified,
-    }
+    };
   }
-
 
   async updateProfile(
     userId: string,
@@ -447,8 +439,71 @@ export class AuthService {
       updated = true;
     }
     if (avatar) {
-      const uploaded = await this.onboardingService.uploadAvatar(userId, avatar);
+      const uploaded = await this.onboardingService.uploadAvatar(
+        userId,
+        avatar,
+      );
       user.avatarImage = uploaded.profileAvatarUrl;
+      updated = true;
+    }
+if (dto.OperatorProfileDto) {
+  if (user.accountType !== UserAccountType.OPERATOR) {
+    throw new BadRequestException(
+      "Operator profile data is not allowed for this account type",
+    );
+  }
+
+  user.operatorProfile = {
+    companyName: dto.OperatorProfileDto.companyName?.trim(),
+    businessAddress: dto.OperatorProfileDto.businessAddress?.trim(),
+    aocNumber: dto.OperatorProfileDto.aocNumber?.trim(),
+    primaryBaseIcao: dto.OperatorProfileDto.primaryBaseIcao?.trim(),
+  };
+
+  updated = true;
+}
+
+    if (
+      dto.PrivateClientProfileDto
+    ) {
+      if(user.accountType !== UserAccountType.PRIVATE_CLIENT_BROKER) {
+        throw new BadRequestException(
+          "Private client profile data is not allowed for this account type",
+        );
+      }
+      user.privateClientProfile = {
+        homeAddress: dto.PrivateClientProfileDto.homeAddress?.trim(),
+        passportNumber: dto.PrivateClientProfileDto.passportNumber?.trim(),
+        preferredAirport: dto.PrivateClientProfileDto.preferredAirport?.trim(),
+      };
+      updated = true;
+    }
+    if (
+      dto.EngineerCrewProfileDto 
+    ) {
+      if(user.accountType !== UserAccountType.ENGINEER_CREW) {
+        throw new BadRequestException(
+          "Engineer crew profile data is not allowed for this account type",
+        );
+      }
+      user.engineerCrewProfile = {
+        specialty: dto.EngineerCrewProfileDto.specialty?.trim(),
+        yearsOfExperience: dto.EngineerCrewProfileDto.yearsOfExperience,
+        licenseCertificationId: dto.EngineerCrewProfileDto.licenseCertificationId?.trim(),
+        languagesSpoken: dto.EngineerCrewProfileDto.languagesSpoken?.trim(),
+      };
+      updated = true;
+    }
+    if (
+      dto.HbuPartnerProfileDto
+    ) {
+      if(user.accountType !== UserAccountType.HBU_PARTNER){
+        throw new BadRequestException("HBU profile data is not allowed for this account type")
+      }
+      user.hbuPartnerProfile = {
+        companyName: dto.HbuPartnerProfileDto.companyName?.trim(),
+        HBU: dto.HbuPartnerProfileDto.HBU?.trim(),
+      };
       updated = true;
     }
     if (!updated) {

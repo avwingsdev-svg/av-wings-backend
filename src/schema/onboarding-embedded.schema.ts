@@ -87,9 +87,8 @@ export const EngineerCrewDocumentSchema = SchemaFactory.createForClass(
 
 @Schema({ _id: false })
 export class HbuPartnerProfileData {
-  @Prop() businessName?: string;
-  @Prop() airportIcaoOrIata?: string;
-  @Prop() servicesDescription?: string;
+  @Prop() companyName?: string;
+  @Prop() HBU?: string;
 }
 
 export const HbuPartnerProfileSchema = SchemaFactory.createForClass(

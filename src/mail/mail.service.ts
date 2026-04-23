@@ -17,19 +17,21 @@ export class MailService {
   private readonly logger = new Logger(MailService.name);
 
   // Delivers the signup verification code using the shared HTML template and app branding.
-  async sendSignupOtp(to: string, otp: string): Promise<void> {
+  async sendSignupOtp(to: string, otp: string, name: string): Promise<void> {
     const env = loadEmailProviderEnv();
     const { subject, html } = signupOtpEmailContent(
-      env.appName ?? '',
+      env.appName ?? 'AV Wings',
       otp,
+      name
     );
     await this.deliver(to, subject, html, env);
   }
 
-    async sendSignupMail(to: string): Promise<void> {
+    async sendSignupMail(to: string, name: string): Promise<void> {
     const env = loadEmailProviderEnv();
     const { subject, html } = signupEmailContent(
-      env.appName ?? '',
+      env.appName ?? 'AV Wings',
+      name
     );
     await this.deliver(to, subject, html, env);
   }
@@ -38,7 +40,7 @@ export class MailService {
   async sendPasswordResetLink(to: string, resetLink: string): Promise<void> {
     const env = loadEmailProviderEnv();
     const { subject, html } = passwordResetLinkEmailContent(
-      env.appName ?? '',
+      env.appName ?? 'AV Wings',
       resetLink,
     );
     await this.deliver(to, subject, html, env);

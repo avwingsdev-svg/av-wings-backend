@@ -89,8 +89,8 @@ export function getMissingProfileFields(user: User): string[] {
     case UserAccountType.HBU_PARTNER: {
       const p = user.hbuPartnerProfile;
       const m: string[] = [];
-      if (!p?.businessName?.trim()) m.push('companyName');
-      if (!p?.airportIcaoOrIata?.trim()) m.push('HBU');
+      if (!p?.companyName?.trim()) m.push('companyName');
+      if (!p?.HBU?.trim()) m.push('HBU');
       return m;
     }
     default:
