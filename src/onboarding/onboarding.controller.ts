@@ -167,8 +167,7 @@ export class OnboardingController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [
-        { name: 'pilotLicenseFront', maxCount: 10 },
-        { name: 'pilotLicenseBack', maxCount: 10 },
+        { name: 'pilotLicense', maxCount: 10 },
         { name: 'medicalCertificate', maxCount: 10 },
       ],
       { limits: { fileSize: 10 * 1024 * 1024 } },
@@ -178,8 +177,7 @@ export class OnboardingController {
     @CurrentUser('userId') userId: string,
     @UploadedFiles()
     files?: {
-      pilotLicenseFront?: Express.Multer.File[];
-      pilotLicenseBack?: Express.Multer.File[];
+      pilotLicense?: Express.Multer.File[];
       medicalCertificate?: Express.Multer.File[];
     },
   ) {

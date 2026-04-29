@@ -55,8 +55,7 @@ export const PilotProfileSchema = SchemaFactory.createForClass(PilotProfileData)
 
 @Schema({ _id: false })
 export class PilotDocumentData {
-  @Prop() pilotLicenseFrontKey?: Array<string>;
-  @Prop() pilotLicenseBackKey?: Array<string>;
+  @Prop() pilotLicenseKey?: Array<string>;
   @Prop() medicalCertificateKey?: Array<string>;
 }
 

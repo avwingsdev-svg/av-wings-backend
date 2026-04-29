@@ -123,8 +123,7 @@ export function getMissingDocumentKeys(user: User): string[] {
     case UserAccountType.PILOT: {
       const d = user.pilotDocuments;
       const m: string[] = [];
-      if (!d?.pilotLicenseFrontKey) m.push('pilotLicenseFront');
-      if (!d?.pilotLicenseBackKey) m.push('pilotLicenseBack');
+      if (!d?.pilotLicenseKey) m.push('pilotLicense');
       if (!d?.medicalCertificateKey) m.push('medicalCertificate');
       return m;
     }

@@ -287,8 +287,7 @@ export class OnboardingService {
   async uploadPilotDocuments(
   userId: string,
   files?: {
-    pilotLicenseFront?: Express.Multer.File[];
-    pilotLicenseBack?: Express.Multer.File[];
+    pilotLicense?: Express.Multer.File[];
     medicalCertificate?: Express.Multer.File[];
   },
 ) {
@@ -313,35 +312,19 @@ export class OnboardingService {
   };
 
   // FRONT
-  if (files.pilotLicenseFront?.length) {
-    user.pilotDocuments.pilotLicenseFrontKey = ensureArray(
-      user.pilotDocuments.pilotLicenseFrontKey,
+  if (files.pilotLicense?.length) {
+    user.pilotDocuments.pilotLicenseKey = ensureArray(
+      user.pilotDocuments.pilotLicenseKey,
     );
 
-    for (const file of files.pilotLicenseFront) {
+    for (const file of files.pilotLicense) {
       const key = await this.storeDocument(
         storageId,
-        'pilotLicenseFront',
+        'pilotLicense',
         file,
       );
 
-      user.pilotDocuments.pilotLicenseFrontKey.push(key);
-    }
-  }
-  // BACK
-  if (files.pilotLicenseBack?.length) {
-    user.pilotDocuments.pilotLicenseBackKey = ensureArray(
-      user.pilotDocuments.pilotLicenseBackKey,
-    );
-
-    for (const file of files.pilotLicenseBack) {
-      const key = await this.storeDocument(
-        storageId,
-        'pilotLicenseBack',
-        file,
-      );
-
-      user.pilotDocuments.pilotLicenseBackKey.push(key);
+      user.pilotDocuments.pilotLicenseKey.push(key);
     }
   }
 
