@@ -233,83 +233,252 @@ export class OnboardingService {
   }
 
   // Pilot license (front/back) and medical certificate.
+  // async uploadPilotDocuments(
+  //   userId: string,
+  //   files?: {
+  //     pilotLicenseFront?: Express.Multer.File[];
+  //     pilotLicenseBack?: Express.Multer.File[];
+  //     medicalCertificate?: Express.Multer.File[];
+  //   },
+  // ) {
+  //   if (!files) {
+  //     throw new BadRequestException('No files uploaded');
+  //   }
+  //   const user = await this.requireUser(userId);
+  //   this.assertAccountType(user, UserAccountType.PILOT);
+  //   const storageId = user._id.toString();
+  //   this.clearDocumentsSkip(user);
+  //   user.pilotDocuments = user.pilotDocuments ?? {};
+  //   if (files.pilotLicenseFront?.[0]) {
+  //     user.pilotDocuments.pilotLicenseFrontKey = user.pilotDocuments.pilotLicenseFrontKey || [];
+  //     user.pilotDocuments.pilotLicenseFrontKey.push(
+  //       await this.storeDocument(
+  //         storageId,
+  //         'pilotLicenseFront',
+  //         files.pilotLicenseFront[0],
+  //       ),
+  //     );
+  //   }
+  //   if (files.pilotLicenseBack?.[0]) {
+  //     user.pilotDocuments.pilotLicenseBackKey = user.pilotDocuments.pilotLicenseBackKey || [];
+  //     user.pilotDocuments.pilotLicenseBackKey.push(
+  //       await this.storeDocument(
+  //         storageId,
+  //         'pilotLicenseBack',
+  //         files.pilotLicenseBack[0],
+  //       ),
+  //     );
+  //   }
+  //   if (files.medicalCertificate?.[0]) {
+  //     user.pilotDocuments.medicalCertificateKey = user.pilotDocuments.medicalCertificateKey || [];
+  //     user.pilotDocuments.medicalCertificateKey.push(
+  //       await this.storeDocument(
+  //         storageId,
+  //         'medicalCertificate',
+  //         files.medicalCertificate[0],
+  //       ),
+  //     );
+  //   }
+  //   await user.save();
+  //   const synced = await this.syncOnboardingCompletionFlags(user);
+  //   return { message: 'Documents updated.', ...buildOnboardingStatus(synced) };
+  // }
+
   async uploadPilotDocuments(
-    userId: string,
-    files?: {
-      pilotLicenseFront?: Express.Multer.File[];
-      pilotLicenseBack?: Express.Multer.File[];
-      medicalCertificate?: Express.Multer.File[];
-    },
-  ) {
-    if (!files) {
-      throw new BadRequestException('No files uploaded');
-    }
-    const user = await this.requireUser(userId);
-    this.assertAccountType(user, UserAccountType.PILOT);
-    const storageId = user._id.toString();
-    this.clearDocumentsSkip(user);
-    user.pilotDocuments = user.pilotDocuments ?? {};
-    if (files.pilotLicenseFront?.[0]) {
-      user.pilotDocuments.pilotLicenseFrontKey = await this.storeDocument(
-        storageId,
-        'pilotLicenseFront',
-        files.pilotLicenseFront[0],
-      );
-    }
-    if (files.pilotLicenseBack?.[0]) {
-      user.pilotDocuments.pilotLicenseBackKey = await this.storeDocument(
-        storageId,
-        'pilotLicenseBack',
-        files.pilotLicenseBack[0],
-      );
-    }
-    if (files.medicalCertificate?.[0]) {
-      user.pilotDocuments.medicalCertificateKey = await this.storeDocument(
-        storageId,
-        'medicalCertificate',
-        files.medicalCertificate[0],
-      );
-    }
-    await user.save();
-    const synced = await this.syncOnboardingCompletionFlags(user);
-    return { message: 'Documents updated.', ...buildOnboardingStatus(synced) };
+  userId: string,
+  files?: {
+    pilotLicenseFront?: Express.Multer.File[];
+    pilotLicenseBack?: Express.Multer.File[];
+    medicalCertificate?: Express.Multer.File[];
+  },
+) {
+  if (!files) {
+    throw new BadRequestException('No files uploaded');
   }
 
-  // Engineer/crew professional license and background check.
+  const user = await this.requireUser(userId);
+  this.assertAccountType(user, UserAccountType.PILOT);
+
+  const storageId = user._id.toString();
+
+  this.clearDocumentsSkip(user);
+
+  user.pilotDocuments = user.pilotDocuments ?? {};
+
+  // SAFE ARRAY INITIALIZER (handles old string data)
+  const ensureArray = (field: any) => {
+    if (!field) return [];
+    if (Array.isArray(field)) return field;
+    return [field]; // migrate string → array
+  };
+
+  // FRONT
+  if (files.pilotLicenseFront?.length) {
+    user.pilotDocuments.pilotLicenseFrontKey = ensureArray(
+      user.pilotDocuments.pilotLicenseFrontKey,
+    );
+
+    for (const file of files.pilotLicenseFront) {
+      const key = await this.storeDocument(
+        storageId,
+        'pilotLicenseFront',
+        file,
+      );
+
+      user.pilotDocuments.pilotLicenseFrontKey.push(key);
+    }
+  }
+  // BACK
+  if (files.pilotLicenseBack?.length) {
+    user.pilotDocuments.pilotLicenseBackKey = ensureArray(
+      user.pilotDocuments.pilotLicenseBackKey,
+    );
+
+    for (const file of files.pilotLicenseBack) {
+      const key = await this.storeDocument(
+        storageId,
+        'pilotLicenseBack',
+        file,
+      );
+
+      user.pilotDocuments.pilotLicenseBackKey.push(key);
+    }
+  }
+
+  // MEDICAL
+  if (files.medicalCertificate?.length) {
+    user.pilotDocuments.medicalCertificateKey = ensureArray(
+      user.pilotDocuments.medicalCertificateKey,
+    );
+
+    for (const file of files.medicalCertificate) {
+      const key = await this.storeDocument(
+        storageId,
+        'medicalCertificate',
+        file,
+      );
+
+      user.pilotDocuments.medicalCertificateKey.push(key);
+    }
+  }
+
+  await user.save();
+
+  const synced = await this.syncOnboardingCompletionFlags(user);
+
+  return {
+    message: 'Documents updated.',
+    ...buildOnboardingStatus(synced),
+  };
+}
+
+  // // Engineer/crew professional license and background check.
+  // async uploadEngineerCrewDocuments(
+  //   userId: string,
+  //   files?: {
+  //     professionalLicense?: Express.Multer.File[];
+  //     backgroundCheck?: Express.Multer.File[];
+  //   },
+  // ) {
+  //   if (!files) {
+  //     throw new BadRequestException('No files uploaded');
+  //   }
+  //   const user = await this.requireUser(userId);
+  //   this.assertAccountType(user, UserAccountType.ENGINEER_CREW);
+  //   const storageId = user._id.toString();
+  //   this.clearDocumentsSkip(user);
+  //   user.engineerCrewDocuments = user.engineerCrewDocuments ?? {};
+  //   if (files.professionalLicense?.[0]) {
+  //     user.engineerCrewDocuments.professionalLicenseKey = user.engineerCrewDocuments.professionalLicenseKey || [];
+  //       await this.storeDocument(
+  //         storageId,
+  //         'professionalLicense',
+  //         files.professionalLicense[0],
+  //       );
+  //   }
+  //   if (files.backgroundCheck?.[0]) {
+  //     user.engineerCrewDocuments.backgroundCheckKey = user.engineerCrewDocuments.backgroundCheckKey || [];
+  //     await this.storeDocument(
+  //       storageId,
+  //       'backgroundCheck',
+  //       files.backgroundCheck[0],
+  //     );
+  //   }
+  //   await user.save();
+  //   const synced = await this.syncOnboardingCompletionFlags(user);
+  //   return { message: 'Documents updated.', ...buildOnboardingStatus(synced) };
+  // }
+
   async uploadEngineerCrewDocuments(
-    userId: string,
-    files?: {
-      professionalLicense?: Express.Multer.File[];
-      backgroundCheck?: Express.Multer.File[];
-    },
-  ) {
-    if (!files) {
-      throw new BadRequestException('No files uploaded');
+  userId: string,
+  files?: {
+    professionalLicense?: Express.Multer.File[];
+    backgroundCheck?: Express.Multer.File[];
+  },
+) {
+  if (!files) {
+    throw new BadRequestException('No files uploaded');
+  }
+
+  const user = await this.requireUser(userId);
+  this.assertAccountType(user, UserAccountType.ENGINEER_CREW);
+
+  const storageId = user._id.toString();
+
+  this.clearDocumentsSkip(user);
+
+  user.engineerCrewDocuments = user.engineerCrewDocuments ?? {};
+
+  // SAFE ARRAY INITIALIZER
+  const ensureArray = (field: any) => {
+    if (!field) return [];
+    if (Array.isArray(field)) return field;
+    return [field];
+  };
+
+  // PROFESSIONAL LICENSE
+  if (files.professionalLicense?.length) {
+    user.engineerCrewDocuments.professionalLicenseKey = ensureArray(
+      user.engineerCrewDocuments.professionalLicenseKey,
+    );
+
+    for (const file of files.professionalLicense) {
+      const key = await this.storeDocument(
+        storageId,
+        'professionalLicense',
+        file,
+      );
+
+      user.engineerCrewDocuments.professionalLicenseKey.push(key); // ✅ FIXED
     }
-    const user = await this.requireUser(userId);
-    this.assertAccountType(user, UserAccountType.ENGINEER_CREW);
-    const storageId = user._id.toString();
-    this.clearDocumentsSkip(user);
-    user.engineerCrewDocuments = user.engineerCrewDocuments ?? {};
-    if (files.professionalLicense?.[0]) {
-      user.engineerCrewDocuments.professionalLicenseKey =
-        await this.storeDocument(
-          storageId,
-          'professionalLicense',
-          files.professionalLicense[0],
-        );
-    }
-    if (files.backgroundCheck?.[0]) {
-      user.engineerCrewDocuments.backgroundCheckKey = await this.storeDocument(
+  }
+
+  // BACKGROUND CHECK
+  if (files.backgroundCheck?.length) {
+    user.engineerCrewDocuments.backgroundCheckKey = ensureArray(
+      user.engineerCrewDocuments.backgroundCheckKey,
+    );
+
+    for (const file of files.backgroundCheck) {
+      const key = await this.storeDocument(
         storageId,
         'backgroundCheck',
-        files.backgroundCheck[0],
+        file,
       );
+
+      user.engineerCrewDocuments.backgroundCheckKey.push(key);
     }
-    await user.save();
-    const synced = await this.syncOnboardingCompletionFlags(user);
-    return { message: 'Documents updated.', ...buildOnboardingStatus(synced) };
   }
+
+  await user.save();
+
+  const synced = await this.syncOnboardingCompletionFlags(user);
+
+  return {
+    message: 'Documents updated.',
+    ...buildOnboardingStatus(synced),
+  };
+}
 
   // HBU partner registration and facility/service certificates.
   async uploadHbuPartnerDocuments(

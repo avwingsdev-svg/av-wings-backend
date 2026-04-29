@@ -167,9 +167,9 @@ export class OnboardingController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [
-        { name: 'pilotLicenseFront', maxCount: 1 },
-        { name: 'pilotLicenseBack', maxCount: 1 },
-        { name: 'medicalCertificate', maxCount: 1 },
+        { name: 'pilotLicenseFront', maxCount: 10 },
+        { name: 'pilotLicenseBack', maxCount: 10 },
+        { name: 'medicalCertificate', maxCount: 10 },
       ],
       { limits: { fileSize: 10 * 1024 * 1024 } },
     ),
@@ -192,8 +192,8 @@ export class OnboardingController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [
-        { name: 'professionalLicense', maxCount: 1 },
-        { name: 'backgroundCheck', maxCount: 1 },
+        { name: 'professionalLicense', maxCount: 10 },
+        { name: 'backgroundCheck', maxCount: 10 },
       ],
       { limits: { fileSize: 10 * 1024 * 1024 } },
     ),

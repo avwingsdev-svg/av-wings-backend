@@ -55,9 +55,9 @@ export const PilotProfileSchema = SchemaFactory.createForClass(PilotProfileData)
 
 @Schema({ _id: false })
 export class PilotDocumentData {
-  @Prop() pilotLicenseFrontKey?: string;
-  @Prop() pilotLicenseBackKey?: string;
-  @Prop() medicalCertificateKey?: string;
+  @Prop() pilotLicenseFrontKey?: Array<string>;
+  @Prop() pilotLicenseBackKey?: Array<string>;
+  @Prop() medicalCertificateKey?: Array<string>;
 }
 
 export const PilotDocumentSchema =
@@ -77,8 +77,8 @@ export const EngineerCrewProfileSchema = SchemaFactory.createForClass(
 
 @Schema({ _id: false })
 export class EngineerCrewDocumentData {
-  @Prop() professionalLicenseKey?: string;
-  @Prop() backgroundCheckKey?: string;
+  @Prop() professionalLicenseKey?: Array<string>;
+  @Prop() backgroundCheckKey?: Array<string>;
 }
 
 export const EngineerCrewDocumentSchema = SchemaFactory.createForClass(
