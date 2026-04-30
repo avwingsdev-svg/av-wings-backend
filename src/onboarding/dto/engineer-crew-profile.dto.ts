@@ -1,4 +1,4 @@
-import { IsNumber, IsString, Max, Min, MinLength } from 'class-validator';
+import { IsArray, IsNumber, IsString, Max, Min, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class EngineerCrewProfileDto {
@@ -16,7 +16,8 @@ export class EngineerCrewProfileDto {
   @MinLength(1)
   licenseCertificationId: string;
 
-  @IsString()
-  @MinLength(1)
-  languagesSpoken: string;
+  @IsArray()
+  @IsString({ each: true }) 
+  @MinLength(1, { each: true })
+  languagesSpoken: string[];
 }

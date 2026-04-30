@@ -67,7 +67,7 @@ export class EngineerCrewProfileData {
   @Prop() specialty?: string;
   @Prop() yearsOfExperience?: number;
   @Prop() licenseCertificationId?: string;
-  @Prop() languagesSpoken?: string;
+  @Prop() languagesSpoken?: Array<string>;
 }
 
 export const EngineerCrewProfileSchema = SchemaFactory.createForClass(

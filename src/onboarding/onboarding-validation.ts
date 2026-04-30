@@ -83,7 +83,9 @@ export function getMissingProfileFields(user: User): string[] {
       if (!p?.licenseCertificationId?.trim()) {
         m.push('licenseCertificationId');
       }
-      if (!p?.languagesSpoken?.trim()) m.push('languagesSpoken');
+      if (!p?.languagesSpoken?.length) {
+        m.push('languagesSpoken');
+      }
       return m;
     }
     case UserAccountType.HBU_PARTNER: {

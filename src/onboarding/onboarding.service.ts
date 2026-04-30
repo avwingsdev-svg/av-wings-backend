@@ -121,7 +121,7 @@ export class OnboardingService {
       specialty: dto.specialty.trim(),
       yearsOfExperience: dto.yearsOfExperience,
       licenseCertificationId: dto.licenseCertificationId.trim(),
-      languagesSpoken: dto.languagesSpoken.trim(),
+      languagesSpoken: dto.languagesSpoken.map((lang) => lang.trim()),
     };
     await user.save();
     const synced = await this.syncOnboardingCompletionFlags(user);
