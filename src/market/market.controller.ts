@@ -24,6 +24,7 @@ import { MarketService } from './market.service';
 export class MarketController {
   constructor(private readonly marketService: MarketService) {}
 
+
   @Get('listings')
   listListings(@Query() query: ListMarketListingsQueryDto) {
     return this.marketService.listActive(query);
