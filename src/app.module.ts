@@ -9,6 +9,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { BookingModule } from './booking/booking.module';
 import { MarketModule } from './market/market.module';
 import { ServicesModule } from './services/services.module';
+import { AircraftModule } from './airCraft/airCraft.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { ServicesModule } from './services/services.module';
     BookingModule,
     MarketModule,
     ServicesModule,
+    AircraftModule,
   ],
 })
 export class AppModule {}
