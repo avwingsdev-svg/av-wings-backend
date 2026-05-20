@@ -40,7 +40,7 @@ export class AircraftController {
   }
 
   // GET SINGLE AIRCRAFT
-  @Get("/get/:id")
+  @Get("/aircraft/:id")
   async findOne(@Param("id") id: string) {
     return this.aircraftService.findOne(id);
   }
