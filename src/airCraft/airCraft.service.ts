@@ -6,7 +6,7 @@ import {
 
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Aircraft } from "@/schema/airCraft";
+import { Aircraft } from "../schema/airCraft";
 import { CreateAircraftDto } from "./dto/create.airCraft.dto";
 import { UpdateAircraftDto } from "./dto/update.airCraft.dto";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
